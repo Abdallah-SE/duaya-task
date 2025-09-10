@@ -31,10 +31,8 @@
 
         <!-- Idle Monitoring Component -->
         <IdleMonitor 
-            :timeout="userSettings.idle_timeout"
-            :enabled="userSettings.idle_monitoring_enabled"
-            :max-warnings="userSettings.max_idle_warnings"
-            @penalty-applied="handlePenaltyApplied"
+            :user-id="user.id"
+            :initial-settings="userSettings"
         />
     </div>
 </template>
@@ -55,12 +53,6 @@ const logout = () => {
     router.post('/logout')
 }
 
-const handlePenaltyApplied = (penaltyData) => {
-    // Handle penalty applied event
-    console.log('Penalty applied:', penaltyData)
-    
-    // Refresh the page to update penalty data
-    router.reload()
-}
+// Remove the handlePenaltyApplied function as it's now handled in the IdleMonitor component
 </script>
 

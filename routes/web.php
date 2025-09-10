@@ -5,6 +5,7 @@ use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\ActivityController;
 use App\Http\Controllers\SettingsController;
 use App\Http\Controllers\AuthController;
+use App\Http\Controllers\IdleMonitoringController;
 
 // Authentication routes
 Route::get('/login', [AuthController::class, 'showLogin'])->name('login');
@@ -27,3 +28,13 @@ Route::middleware(['auth', 'log.activity'])->group(function () {
     Route::put('/settings', [SettingsController::class, 'update'])->name('settings.update');
     Route::post('/settings/global', [SettingsController::class, 'updateGlobalSettings'])->name('settings.global');
 });
+
+// API routes for idle monitoring
+Route::prefix('api/idle-monitoring')->middleware(['auth:sanctum'])->group(function () {
+    Route::post('/start-session', [IdleMonitoringController::class, 'startIdleSession']);
+    Route::post('/end-session', [IdleMonitoringController::class, 'endIdleSession']);
+    Route::post('/handle-warning', [IdleMonitoringController::class, 'handleIdleWarning']);
+    Route::get('/settings', [IdleMonitoringController::class, 'getSettings']);
+    Route::post('/update-settings', [IdleMonitoringController::class, 'updateSettings']);
+});
+Route::get('/test-tailwind', function () { return Inertia::render('TestTailwind'); });

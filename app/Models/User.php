@@ -6,6 +6,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
+use Laravel\Sanctum\HasApiTokens;
 use Spatie\Permission\Traits\HasRoles;
 
 // Removed Spatie Activity Log - using custom activity logging
@@ -13,7 +14,7 @@ use Spatie\Permission\Traits\HasRoles;
 class User extends Authenticatable
 {
     /** @use HasFactory<\Database\Factories\UserFactory> */
-    use HasFactory, Notifiable,HasRoles;
+    use HasFactory, Notifiable, HasRoles, HasApiTokens;
 
     /**
      * The attributes that are mass assignable.
@@ -24,7 +25,6 @@ class User extends Authenticatable
         'name',
         'email',
         'password',
-        'role',
     ];
 
     /**
@@ -61,23 +61,35 @@ class User extends Authenticatable
     }
 
     /**
-     * Get the user settings.
+     * Get the user's idle settings.
      */
-    public function settings()
+    public function idleSettings()
     {
-        return $this->hasOne(UserSetting::class);
+        return $this->hasOne(IdleSetting::class);
     }
 
     /**
-     * Get or create user settings.
+     * Get or create user idle settings.
      */
-    public function getSettings()
+    public function getIdleSettings()
     {
-        return $this->settings ?? $this->settings()->create([
-            'idle_timeout' => 5,
-            'idle_monitoring_enabled' => true,
-            'max_idle_warnings' => 3,
-        ]);
+        return $this->idleSettings ?? IdleSetting::getForUser($this->id);
+    }
+
+    /**
+     * Get the user's activity logs.
+     */
+    public function activityLogs()
+    {
+        return $this->hasMany(ActivityLog::class);
+    }
+
+    /**
+     * Get the user's idle sessions.
+     */
+    public function idleSessions()
+    {
+        return $this->hasMany(IdleSession::class);
     }
 
     /**

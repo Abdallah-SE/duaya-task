@@ -1,77 +1,265 @@
 <template>
-    <div class="min-h-screen flex items-center justify-center bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
-        <div class="max-w-md w-full space-y-8">
-            <div>
-                <h2 class="mt-6 text-center text-3xl font-extrabold text-gray-900">
-                    Duaya Task - Activity Monitor
+    <div class="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900 py-12 px-4 sm:px-6 lg:px-8">
+        <!-- Background Pattern -->
+        <div class="absolute inset-0 opacity-20" style="background-image: radial-gradient(circle at 1px 1px, rgba(156, 146, 172, 0.1) 1px, transparent 0); background-size: 20px 20px;"></div>
+        
+        <div class="relative max-w-md w-full space-y-8">
+            <!-- Logo and Header -->
+            <div class="text-center">
+                <div class="mx-auto h-16 w-16 bg-gradient-to-r from-indigo-500 to-purple-600 rounded-2xl flex items-center justify-center shadow-2xl">
+                    <svg class="h-8 w-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path>
+                    </svg>
+                </div>
+                <h2 class="mt-6 text-center text-4xl font-bold bg-gradient-to-r from-white to-gray-300 bg-clip-text text-transparent">
+                    Activity Monitor
                 </h2>
-                <p class="mt-2 text-center text-sm text-gray-600">
-                    Sign in to your account to start monitoring
+                <p class="mt-2 text-center text-sm text-gray-300">
+                    Secure access to your activity monitoring dashboard
                 </p>
             </div>
-            <form class="mt-8 space-y-6" @submit.prevent="submit">
-                <div class="rounded-md shadow-sm -space-y-px">
+            
+            <!-- Login Form Card -->
+            <div class="bg-white/10 backdrop-blur-lg rounded-2xl shadow-2xl border border-white/20 p-8">
+                <form class="space-y-6" @submit.prevent="submit">
+                    <div class="space-y-5">
+                        <!-- Email Field -->
+                        <div>
+                            <label for="email" class="block text-sm font-semibold text-gray-200 mb-2">
+                                Email Address
+                            </label>
+                            <div class="relative">
+                                <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                                    <svg class="h-5 w-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 12a4 4 0 10-8 0 4 4 0 008 0zm0 0v1.5a2.5 2.5 0 005 0V12a9 9 0 10-9 9m4.5-1.206a8.959 8.959 0 01-4.5 1.207"></path>
+                                    </svg>
+                                </div>
+                                <input
+                                    id="email"
+                                    name="email"
+                                    type="email"
+                                    autocomplete="email"
+                                    required
+                                    v-model="form.email"
+                                    :class="[
+                                        'block w-full pl-10 pr-3 py-3 border rounded-xl placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all duration-200 bg-white/10 backdrop-blur-sm text-white placeholder-gray-300',
+                                        errors.email ? 'border-red-400 ring-red-400' : 'border-gray-600'
+                                    ]"
+                                    placeholder="Enter your email address"
+                                />
+                            </div>
+                            <div v-if="errors.email" class="mt-2 text-sm text-red-300 flex items-center">
+                                <svg class="h-4 w-4 mr-1" fill="currentColor" viewBox="0 0 20 20">
+                                    <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clip-rule="evenodd"></path>
+                                </svg>
+                                {{ errors.email }}
+                            </div>
+                        </div>
+                        
+                        <!-- Password Field -->
+                        <div>
+                            <label for="password" class="block text-sm font-semibold text-gray-200 mb-2">
+                                Password
+                            </label>
+                            <div class="relative">
+                                <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                                    <svg class="h-5 w-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"></path>
+                                    </svg>
+                                </div>
+                                <input
+                                    id="password"
+                                    name="password"
+                                    :type="showPassword ? 'text' : 'password'"
+                                    autocomplete="current-password"
+                                    required
+                                    v-model="form.password"
+                                    :class="[
+                                        'block w-full pl-10 pr-12 py-3 border rounded-xl placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all duration-200 bg-white/10 backdrop-blur-sm text-white placeholder-gray-300',
+                                        errors.password ? 'border-red-400 ring-red-400' : 'border-gray-600'
+                                    ]"
+                                    placeholder="Enter your password"
+                                />
+                                <button
+                                    type="button"
+                                    @click="togglePasswordVisibility"
+                                    class="absolute inset-y-0 right-0 pr-3 flex items-center"
+                                >
+                                    <svg v-if="showPassword" class="h-5 w-5 text-gray-400 hover:text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.878 9.878L3 3m6.878 6.878L21 21"></path>
+                                    </svg>
+                                    <svg v-else class="h-5 w-5 text-gray-400 hover:text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path>
+                                    </svg>
+                                </button>
+                            </div>
+                            <div v-if="errors.password" class="mt-2 text-sm text-red-300 flex items-center">
+                                <svg class="h-4 w-4 mr-1" fill="currentColor" viewBox="0 0 20 20">
+                                    <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clip-rule="evenodd"></path>
+                                </svg>
+                                {{ errors.password }}
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Submit Button -->
                     <div>
-                        <label for="email" class="sr-only">Email address</label>
-                        <input
-                            id="email"
-                            name="email"
-                            type="email"
-                            autocomplete="email"
-                            required
-                            v-model="form.email"
-                            class="appearance-none rounded-none relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-t-md focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 focus:z-10 sm:text-sm"
-                            placeholder="Email address"
-                        />
+                        <button
+                            type="submit"
+                            :disabled="processing"
+                            class="group relative w-full flex justify-center py-3 px-4 border border-transparent text-sm font-semibold rounded-xl text-white bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 shadow-lg hover:shadow-xl transform hover:scale-[1.02]"
+                        >
+                            <svg v-if="processing" class="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                            </svg>
+                            <span v-if="processing">Authenticating...</span>
+                            <span v-else class="flex items-center">
+                                <svg class="h-5 w-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 16l-4-4m0 0l4-4m-4 4h14m-5 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h7a3 3 0 013 3v1"></path>
+                                </svg>
+                                Sign In
+                            </span>
+                        </button>
                     </div>
-                    <div>
-                        <label for="password" class="sr-only">Password</label>
-                        <input
-                            id="password"
-                            name="password"
-                            type="password"
-                            autocomplete="current-password"
-                            required
-                            v-model="form.password"
-                            class="appearance-none rounded-none relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-b-md focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 focus:z-10 sm:text-sm"
-                            placeholder="Password"
-                        />
+                </form>
+            </div>
+
+            <!-- Test Credentials -->
+            <div class="bg-white/5 backdrop-blur-sm rounded-xl border border-white/10 p-6">
+                <h3 class="text-sm font-semibold text-gray-200 mb-3 flex items-center">
+                    <svg class="h-4 w-4 mr-2 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path>
+                    </svg>
+                    Test Accounts
+                </h3>
+                <div class="text-xs text-gray-300 space-y-3">
+                    <div class="bg-white/5 rounded-lg p-3 border border-white/10">
+                        <p class="font-semibold text-green-300 mb-2">Admin Account</p>
+                        <div class="space-y-2">
+                            <div class="flex items-center justify-between">
+                                <p><span class="text-gray-400">Email:</span> admin@duaya.com</p>
+                                <button 
+                                    @click="copyToClipboard('admin@duaya.com', 'admin-email')"
+                                    :class="[
+                                        'px-3 py-1 rounded text-xs font-medium transition-all duration-200',
+                                        copiedStates['admin-email'] 
+                                            ? 'bg-green-600 text-white' 
+                                            : 'text-blue-400 hover:text-blue-300 hover:bg-blue-500/20'
+                                    ]"
+                                    :title="copiedStates['admin-email'] ? 'Copied!' : 'Copy email'"
+                                >
+                                    <span v-if="copiedStates['admin-email']" class="flex items-center space-x-1">
+                                        <svg class="h-3 w-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+                                        </svg>
+                                        <span>{{ copiedStates['admin-email'] }}</span>
+                                    </span>
+                                    <svg v-else class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"></path>
+                                    </svg>
+                                </button>
+                            </div>
+                            <div class="flex items-center justify-between">
+                                <p><span class="text-gray-400">Password:</span> password</p>
+                                <button 
+                                    @click="copyToClipboard('password', 'admin-password')"
+                                    :class="[
+                                        'px-3 py-1 rounded text-xs font-medium transition-all duration-200',
+                                        copiedStates['admin-password'] 
+                                            ? 'bg-green-600 text-white' 
+                                            : 'text-blue-400 hover:text-blue-300 hover:bg-blue-500/20'
+                                    ]"
+                                    :title="copiedStates['admin-password'] ? 'Copied!' : 'Copy password'"
+                                >
+                                    <span v-if="copiedStates['admin-password']" class="flex items-center space-x-1">
+                                        <svg class="h-3 w-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+                                        </svg>
+                                        <span>{{ copiedStates['admin-password'] }}</span>
+                                    </span>
+                                    <svg v-else class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"></path>
+                                    </svg>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="bg-white/5 rounded-lg p-3 border border-white/10">
+                        <p class="font-semibold text-blue-300 mb-2">Employee Account</p>
+                        <div class="space-y-2">
+                            <div class="flex items-center justify-between">
+                                <p><span class="text-gray-400">Email:</span> employee1@duaya.com</p>
+                                <button 
+                                    @click="copyToClipboard('employee1@duaya.com', 'employee-email')"
+                                    :class="[
+                                        'px-3 py-1 rounded text-xs font-medium transition-all duration-200',
+                                        copiedStates['employee-email'] 
+                                            ? 'bg-green-600 text-white' 
+                                            : 'text-blue-400 hover:text-blue-300 hover:bg-blue-500/20'
+                                    ]"
+                                    :title="copiedStates['employee-email'] ? 'Copied!' : 'Copy email'"
+                                >
+                                    <span v-if="copiedStates['employee-email']" class="flex items-center space-x-1">
+                                        <svg class="h-3 w-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+                                        </svg>
+                                        <span>{{ copiedStates['employee-email'] }}</span>
+                                    </span>
+                                    <svg v-else class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"></path>
+                                    </svg>
+                                </button>
+                            </div>
+                            <div class="flex items-center justify-between">
+                                <p><span class="text-gray-400">Password:</span> password</p>
+                                <button 
+                                    @click="copyToClipboard('password', 'employee-password')"
+                                    :class="[
+                                        'px-3 py-1 rounded text-xs font-medium transition-all duration-200',
+                                        copiedStates['employee-password'] 
+                                            ? 'bg-green-600 text-white' 
+                                            : 'text-blue-400 hover:text-blue-300 hover:bg-blue-500/20'
+                                    ]"
+                                    :title="copiedStates['employee-password'] ? 'Copied!' : 'Copy password'"
+                                >
+                                    <span v-if="copiedStates['employee-password']" class="flex items-center space-x-1">
+                                        <svg class="h-3 w-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+                                        </svg>
+                                        <span>{{ copiedStates['employee-password'] }}</span>
+                                    </span>
+                                    <svg v-else class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"></path>
+                                    </svg>
+                                </button>
+                            </div>
+                        </div>
                     </div>
                 </div>
+            </div>
 
-                <div v-if="errors.email" class="text-red-600 text-sm">
-                    {{ errors.email }}
+            <!-- Security Notice -->
+            <div class="bg-white/5 backdrop-blur-sm rounded-xl border border-white/10 p-6">
+                <h3 class="text-sm font-semibold text-gray-200 mb-3 flex items-center">
+                    <svg class="h-4 w-4 mr-2 text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"></path>
+                    </svg>
+                    Secure Authentication
+                </h3>
+                <div class="text-xs text-gray-400 space-y-2">
+                    <p>• All login attempts are monitored and logged</p>
+                    <p>• Session activity is tracked for security</p>
+                    <p>• Use the test accounts above for easy access</p>
                 </div>
-
-                <div>
-                    <button
-                        type="submit"
-                        :disabled="processing"
-                        class="group relative w-full flex justify-center py-2 px-4 border border-transparent text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:opacity-50"
-                    >
-                        <span v-if="processing">Signing in...</span>
-                        <span v-else>Sign in</span>
-                    </button>
-                </div>
-
-                <!-- Test Users Info -->
-                <div class="mt-6 p-4 bg-blue-50 rounded-md">
-                    <h3 class="text-sm font-medium text-blue-800 mb-2">Test Users:</h3>
-                    <div class="text-xs text-blue-700 space-y-1">
-                        <div><strong>Admin:</strong> admin@duaya.com / password</div>
-                        <div><strong>Manager:</strong> manager@duaya.com / password</div>
-                        <div><strong>Employee 1:</strong> employee1@duaya.com / password</div>
-                        <div><strong>Employee 2:</strong> employee2@duaya.com / password</div>
-                        <div><strong>Employee 3:</strong> employee3@duaya.com / password</div>
-                    </div>
-                </div>
-            </form>
+            </div>
         </div>
     </div>
 </template>
 
 <script setup>
-import { ref } from 'vue'
+import { ref, onMounted } from 'vue'
 import { router } from '@inertiajs/vue3'
 
 const form = ref({
@@ -81,6 +269,8 @@ const form = ref({
 
 const processing = ref(false)
 const errors = ref({})
+const showPassword = ref(false)
+const copiedStates = ref({})
 
 const submit = () => {
     processing.value = true
@@ -95,5 +285,48 @@ const submit = () => {
         }
     })
 }
-</script>
 
+const togglePasswordVisibility = () => {
+    showPassword.value = !showPassword.value
+}
+
+const copyToClipboard = async (text, buttonId) => {
+    try {
+        await navigator.clipboard.writeText(text)
+        showCopySuccess(buttonId)
+        console.log('Copied to clipboard:', text)
+    } catch (err) {
+        console.error('Failed to copy: ', err)
+        // Fallback for older browsers
+        const textArea = document.createElement('textarea')
+        textArea.value = text
+        document.body.appendChild(textArea)
+        textArea.focus()
+        textArea.select()
+        try {
+            document.execCommand('copy')
+            showCopySuccess(buttonId)
+            console.log('Copied to clipboard (fallback):', text)
+        } catch (fallbackErr) {
+            console.error('Fallback copy failed: ', fallbackErr)
+            showCopySuccess(buttonId, true)
+        }
+        document.body.removeChild(textArea)
+    }
+}
+
+const showCopySuccess = (buttonId, isError = false) => {
+    copiedStates.value[buttonId] = isError ? 'Failed' : 'Copied!'
+    setTimeout(() => {
+        copiedStates.value[buttonId] = false
+    }, 2000)
+}
+
+onMounted(() => {
+    // Focus on email input when component mounts
+    const emailInput = document.getElementById('email')
+    if (emailInput) {
+        emailInput.focus()
+    }
+})
+</script>

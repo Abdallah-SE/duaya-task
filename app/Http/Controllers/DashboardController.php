@@ -8,13 +8,14 @@ use App\Models\User;
 use App\Models\Employee;
 use App\Models\Penalty;
 use App\Models\ActivityLog;
+use App\Models\IdleSetting;
 
 class DashboardController extends Controller
 {
     public function index(Request $request)
     {
         $user = $request->user();
-        $userSettings = $user->getSettings();
+        $userSettings = $user->getIdleSettings();
         
         // Load employee relationship if user is an employee
         $user->load('employee');
