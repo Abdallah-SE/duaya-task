@@ -7,6 +7,8 @@ use Inertia\Inertia;
 use App\Models\Penalty;
 use App\Models\User;
 use App\Models\ActivityLog;
+use App\Events\UserActivityEvent;
+use App\Events\PenaltyAppliedEvent;
 
 class ActivityController extends Controller
 {
@@ -54,16 +56,12 @@ class ActivityController extends Controller
             'metadata' => $request->metadata ?? [],
         ]);
         
-        // Log the penalty application using custom activity logging
-        ActivityLog::create([
-            'user_id' => $request->user()->id,
-            'action' => 'penalty_applied',
-            'subject_type' => Penalty::class,
-            'subject_id' => $penalty->id,
-            'ip_address' => $request->ip(),
-            'device' => $request->header('User-Agent'),
-            'browser' => $request->header('User-Agent'),
-        ]);
+        // Fire event for penalty application
+        event(new PenaltyAppliedEvent(
+            user: $request->user(),
+            penalty: $penalty,
+            reason: $request->reason
+        ));
         
         return response()->json([
             'success' => true,

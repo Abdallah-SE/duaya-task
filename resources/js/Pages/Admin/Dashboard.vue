@@ -88,8 +88,62 @@
                             </div>
                             <div class="ml-5 w-0 flex-1">
                                 <dl>
-                                    <dt class="text-sm font-medium text-gray-500 truncate">Penalties</dt>
+                                    <dt class="text-sm font-medium text-gray-500 truncate">Total Penalties</dt>
                                     <dd class="text-lg font-medium text-gray-900">{{ stats.penalties }}</dd>
+                                </dl>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="bg-white overflow-hidden shadow rounded-lg">
+                    <div class="p-5">
+                        <div class="flex items-center">
+                            <div class="flex-shrink-0">
+                                <svg class="h-6 w-6 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                </svg>
+                            </div>
+                            <div class="ml-5 w-0 flex-1">
+                                <dl>
+                                    <dt class="text-sm font-medium text-gray-500 truncate">Idle Sessions</dt>
+                                    <dd class="text-lg font-medium text-gray-900">{{ stats.idleSessions }}</dd>
+                                </dl>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="bg-white overflow-hidden shadow rounded-lg">
+                    <div class="p-5">
+                        <div class="flex items-center">
+                            <div class="flex-shrink-0">
+                                <svg class="h-6 w-6 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z" />
+                                </svg>
+                            </div>
+                            <div class="ml-5 w-0 flex-1">
+                                <dl>
+                                    <dt class="text-sm font-medium text-gray-500 truncate">Active Idle Sessions</dt>
+                                    <dd class="text-lg font-medium text-gray-900">{{ stats.activeIdleSessions }}</dd>
+                                </dl>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="bg-white overflow-hidden shadow rounded-lg">
+                    <div class="p-5">
+                        <div class="flex items-center">
+                            <div class="flex-shrink-0">
+                                <svg class="h-6 w-6 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.732-.833-2.5 0L4.268 19.5c-.77.833.192 2.5 1.732 2.5z" />
+                                </svg>
+                            </div>
+                            <div class="ml-5 w-0 flex-1">
+                                <dl>
+                                    <dt class="text-sm font-medium text-gray-500 truncate">Penalties Today</dt>
+                                    <dd class="text-lg font-medium text-gray-900">{{ stats.penaltiesToday }}</dd>
                                 </dl>
                             </div>
                         </div>
@@ -197,6 +251,52 @@
                     </li>
                 </ul>
             </div>
+
+            <!-- Idle Session Statistics -->
+            <div v-if="idleSessionStats.length > 0" class="bg-white shadow overflow-hidden sm:rounded-md">
+                <div class="px-4 py-5 sm:px-6">
+                    <h3 class="text-lg leading-6 font-medium text-gray-900">Top Idle Session Users</h3>
+                    <p class="mt-1 max-w-2xl text-sm text-gray-500">Users with most idle sessions</p>
+                </div>
+                <ul class="divide-y divide-gray-200">
+                    <li v-for="stat in idleSessionStats" :key="stat.user_id" class="px-4 py-4 sm:px-6">
+                        <div class="flex items-center justify-between">
+                            <div>
+                                <div class="text-sm font-medium text-gray-900">
+                                    {{ stat.user?.name || 'Unknown User' }}
+                                </div>
+                                <div class="text-sm text-gray-500">
+                                    Sessions: {{ stat.session_count }} | 
+                                    Total Duration: {{ formatDuration(stat.total_duration) }} | 
+                                    Avg Duration: {{ formatDuration(stat.avg_duration) }}
+                                </div>
+                            </div>
+                        </div>
+                    </li>
+                </ul>
+            </div>
+
+            <!-- Activity Statistics -->
+            <div v-if="activityStats.length > 0" class="bg-white shadow overflow-hidden sm:rounded-md">
+                <div class="px-4 py-5 sm:px-6">
+                    <h3 class="text-lg leading-6 font-medium text-gray-900">Most Common Activities</h3>
+                    <p class="mt-1 max-w-2xl text-sm text-gray-500">Most frequently performed actions</p>
+                </div>
+                <ul class="divide-y divide-gray-200">
+                    <li v-for="stat in activityStats" :key="stat.action" class="px-4 py-4 sm:px-6">
+                        <div class="flex items-center justify-between">
+                            <div>
+                                <div class="text-sm font-medium text-gray-900">
+                                    {{ stat.action }}
+                                </div>
+                            </div>
+                            <div class="text-sm text-gray-500">
+                                {{ stat.count }} times
+                            </div>
+                        </div>
+                    </li>
+                </ul>
+            </div>
         </div>
     </AppLayout>
 </template>
@@ -213,6 +313,8 @@ const props = defineProps({
     recentActivities: Array,
     allPenalties: Array,
     employeeStats: Array,
+    idleSessionStats: Array,
+    activityStats: Array,
     greeting: String
 })
 
@@ -222,5 +324,13 @@ const refreshData = () => {
 
 const formatDate = (dateString) => {
     return new Date(dateString).toLocaleString()
+}
+
+const formatDuration = (duration) => {
+    if (!duration) return 'N/A'
+    const hours = Math.floor(duration / 3600)
+    const minutes = Math.floor((duration % 3600) / 60)
+    const seconds = Math.floor(duration % 60)
+    return `${hours}h ${minutes}m ${seconds}s`
 }
 </script>

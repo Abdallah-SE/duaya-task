@@ -57,7 +57,7 @@ class User extends Authenticatable
      */
     public function penalties()
     {
-        return $this->hasMany(Penalty::class);
+        return $this->hasMany(\App\Models\Penalty::class);
     }
 
     /**
@@ -65,7 +65,7 @@ class User extends Authenticatable
      */
     public function idleSettings()
     {
-        return $this->hasOne(IdleSetting::class);
+        return $this->hasOne(\App\Models\IdleSetting::class);
     }
 
     /**
@@ -73,7 +73,7 @@ class User extends Authenticatable
      */
     public function getIdleSettings()
     {
-        return $this->idleSettings ?? IdleSetting::getForUser($this->id);
+        return $this->idleSettings ?? \App\Models\IdleSetting::getForUser($this->id);
     }
 
     /**
@@ -81,7 +81,7 @@ class User extends Authenticatable
      */
     public function activityLogs()
     {
-        return $this->hasMany(ActivityLog::class);
+        return $this->hasMany(\App\Models\ActivityLog::class);
     }
 
     /**
@@ -89,7 +89,7 @@ class User extends Authenticatable
      */
     public function idleSessions()
     {
-        return $this->hasMany(IdleSession::class);
+        return $this->hasMany(\App\Models\IdleSession::class);
     }
 
     /**
@@ -97,7 +97,7 @@ class User extends Authenticatable
      */
     public function employee()
     {
-        return $this->hasOne(Employee::class);
+        return $this->hasOne(\App\Models\Employee::class);
     }
 
     /**

@@ -17,6 +17,18 @@
                 <p class="mt-2 text-center text-sm text-gray-300">
                     Choose your access portal
                 </p>
+                
+                <!-- Inactivity Logout Message -->
+                <div v-if="showInactivityMessage" class="mt-4 p-4 bg-red-500/20 border border-red-500/30 rounded-lg">
+                    <div class="flex items-center">
+                        <svg class="h-5 w-5 text-red-400 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z"></path>
+                        </svg>
+                        <p class="text-sm text-red-300">
+                            You were automatically logged out due to inactivity. A penalty has been applied to your account.
+                        </p>
+                    </div>
+                </div>
             </div>
             
             <!-- Portal Selection Cards -->
@@ -122,7 +134,23 @@
 </template>
 
 <script setup>
+import { ref, onMounted } from 'vue'
 import { router } from '@inertiajs/vue3'
+
+// Check for inactivity logout message
+const showInactivityMessage = ref(false)
+
+onMounted(() => {
+    // Check URL parameters for inactivity logout message
+    const urlParams = new URLSearchParams(window.location.search)
+    if (urlParams.get('message') === 'inactivity_logout') {
+        showInactivityMessage.value = true
+        // Auto-hide message after 10 seconds
+        setTimeout(() => {
+            showInactivityMessage.value = false
+        }, 10000)
+    }
+})
 
 const goToAdminLogin = () => {
     router.visit('/admin/login')

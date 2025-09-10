@@ -56,7 +56,7 @@
                                 >
                                     <option value="1">1 warning</option>
                                     <option value="2">2 warnings</option>
-                                    <option value="3">3 warnings</option>
+                                    <option value="3">3 warnings (recommended)</option>
                                     <option value="5">5 warnings</option>
                                     <option value="10">10 warnings</option>
                                 </select>

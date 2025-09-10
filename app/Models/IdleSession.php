@@ -101,9 +101,11 @@ class IdleSession extends Model
      */
     public function endSession(): self
     {
+        $duration = max(0, now()->diffInSeconds($this->idle_started_at));
+        
         $this->update([
             'idle_ended_at' => now(),
-            'duration_seconds' => now()->diffInSeconds($this->idle_started_at),
+            'duration_seconds' => $duration,
         ]);
 
         return $this;

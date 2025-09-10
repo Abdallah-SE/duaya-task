@@ -6,6 +6,7 @@ use Closure;
 use Illuminate\Http\Request;
 use Symfony\Component\HttpFoundation\Response;
 use App\Models\ActivityLog;
+use App\Events\UserActivityEvent;
 
 class LogActivity
 {
@@ -74,16 +75,16 @@ class LogActivity
             }
         }
         
-        // Log the activity using our custom ActivityLog model
-        ActivityLog::logActivity(
-            userId: $user->id,
+        // Fire event for activity logging
+        event(new UserActivityEvent(
+            user: $user,
             action: $action,
             subjectType: $subjectType,
             subjectId: $subjectId,
             ipAddress: $request->ip(),
             device: $this->getDeviceInfo($request),
             browser: $this->getBrowserInfo($request)
-        );
+        ));
     }
     
     private function determineAction(string $method, $route): string

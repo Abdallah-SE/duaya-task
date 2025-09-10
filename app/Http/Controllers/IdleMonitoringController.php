@@ -8,6 +8,9 @@ use App\Models\IdleSession;
 use App\Models\Penalty;
 use App\Models\IdleSetting;
 use App\Models\ActivityLog;
+use App\Events\UserActivityEvent;
+use App\Events\IdleWarningEvent;
+use App\Events\PenaltyAppliedEvent;
 
 class IdleMonitoringController extends Controller
 {
@@ -32,16 +35,16 @@ class IdleMonitoringController extends Controller
         // Start new idle session
         $idleSession = IdleSession::startSession($user->id);
         
-        // Log the activity
-        ActivityLog::logActivity(
-            userId: $user->id,
+        // Fire event for activity logging
+        event(new UserActivityEvent(
+            user: $user,
             action: 'idle_session_started',
             subjectType: 'App\Models\IdleSession',
             subjectId: $idleSession->id,
             ipAddress: $request->ip(),
             device: $this->getDeviceInfo($request),
             browser: $this->getBrowserInfo($request)
-        );
+        ));
         
         return response()->json([
             'message' => 'Idle session started',
@@ -70,16 +73,16 @@ class IdleMonitoringController extends Controller
         
         $idleSession->endSession();
         
-        // Log the activity
-        ActivityLog::logActivity(
-            userId: $user->id,
+        // Fire event for activity logging
+        event(new UserActivityEvent(
+            user: $user,
             action: 'idle_session_ended',
             subjectType: 'App\Models\IdleSession',
             subjectId: $idleSession->id,
             ipAddress: $request->ip(),
             device: $this->getDeviceInfo($request),
             browser: $this->getBrowserInfo($request)
-        );
+        ));
         
         return response()->json([
             'message' => 'Idle session ended',
@@ -98,27 +101,25 @@ class IdleMonitoringController extends Controller
         
         $idleSettings = $user->getIdleSettings();
         
-        // Log the warning
-        ActivityLog::logActivity(
-            userId: $user->id,
-            action: 'idle_warning',
-            subjectType: 'App\Models\IdleSession',
-            subjectId: $sessionId,
-            ipAddress: $request->ip(),
-            device: $this->getDeviceInfo($request),
-            browser: $this->getBrowserInfo($request)
-        );
+        // Fire event for idle warning
+        event(new IdleWarningEvent(
+            user: $user,
+            warningCount: $warningCount,
+            maxWarnings: $idleSettings->max_idle_warnings,
+            sessionId: $sessionId,
+            timeoutSeconds: $idleSettings->idle_timeout
+        ));
         
         // Check if this is the third warning (should trigger penalty)
-        if ($warningCount >= $idleSettings->max_idle_warnings) {
+        if ($warningCount >= 3) {
             return $this->applyPenalty($user, $request, $sessionId);
         }
         
         return response()->json([
             'message' => 'Idle warning recorded',
             'warning_count' => $warningCount,
-            'max_warnings' => $idleSettings->max_idle_warnings,
-            'next_action' => $warningCount + 1 >= $idleSettings->max_idle_warnings ? 'penalty' : 'warning'
+            'max_warnings' => 3,
+            'next_action' => $warningCount + 1 >= 3 ? 'penalty' : 'warning'
         ]);
     }
     
@@ -143,16 +144,12 @@ class IdleMonitoringController extends Controller
             $idleSession->endSession();
         }
         
-        // Log the penalty
-        ActivityLog::logActivity(
-            userId: $user->id,
-            action: 'penalty_applied',
-            subjectType: 'App\Models\Penalty',
-            subjectId: $penalty->id,
-            ipAddress: $request->ip(),
-            device: $this->getDeviceInfo($request),
-            browser: $this->getBrowserInfo($request)
-        );
+        // Fire event for penalty applied
+        event(new PenaltyAppliedEvent(
+            user: $user,
+            penalty: $penalty,
+            reason: 'Excessive idle time - auto logout triggered'
+        ));
         
         // Logout the user
         Auth::logout();
@@ -209,16 +206,16 @@ class IdleMonitoringController extends Controller
             $validated['max_idle_warnings']
         );
         
-        // Log the settings update
-        ActivityLog::logActivity(
-            userId: $user->id,
+        // Fire event for settings update
+        event(new UserActivityEvent(
+            user: $user,
             action: 'update_idle_settings',
             subjectType: 'App\Models\IdleSetting',
             subjectId: $settings->id,
             ipAddress: $request->ip(),
             device: $this->getDeviceInfo($request),
             browser: $this->getBrowserInfo($request)
-        );
+        ));
         
         return response()->json([
             'message' => 'Settings updated successfully',
@@ -259,6 +256,39 @@ class IdleMonitoringController extends Controller
             return 'Edge';
         } else {
             return 'Unknown';
+        }
+    }
+
+    /**
+     * Test database operations.
+     */
+    public function testDatabase(Request $request)
+    {
+        $user = Auth::user();
+        
+        try {
+            // Test penalty creation
+            $penalty = Penalty::createPenalty(
+                userId: $user->id,
+                reason: 'Test penalty from API',
+                count: 1
+            );
+            
+            // Test idle session creation
+            $session = IdleSession::startSession($user->id);
+            
+            return response()->json([
+                'success' => true,
+                'penalty_id' => $penalty->id,
+                'session_id' => $session->id,
+                'message' => 'Database operations successful'
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'error' => $e->getMessage(),
+                'message' => 'Database operations failed'
+            ], 500);
         }
     }
 }

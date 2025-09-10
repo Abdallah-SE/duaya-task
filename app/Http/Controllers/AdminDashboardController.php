@@ -9,6 +9,7 @@ use App\Models\Employee;
 use App\Models\Penalty;
 use App\Models\ActivityLog;
 use App\Models\IdleSetting;
+use App\Models\IdleSession;
 
 class AdminDashboardController extends Controller
 {
@@ -27,8 +28,11 @@ class AdminDashboardController extends Controller
             'totalActivities' => ActivityLog::count(),
             'activeUsers' => User::where('updated_at', '>=', now()->subHours(24))->count(),
             'totalEmployees' => Employee::count(),
-            'idleSessions' => $this->getIdleSessionsCount(),
+            'idleSessions' => IdleSession::count(),
+            'activeIdleSessions' => IdleSession::active()->count(),
+            'totalIdleTime' => IdleSession::sum('duration_seconds'),
             'penalties' => Penalty::count(),
+            'penaltiesToday' => Penalty::whereDate('date', today())->count(),
             'adminUsers' => User::role('admin')->count(),
             'employeeUsers' => User::role('employee')->count(),
         ];
@@ -67,6 +71,29 @@ class AdminDashboardController extends Controller
         ')
         ->groupBy('department')
         ->get();
+
+        // Get idle session statistics by user
+        $idleSessionStats = IdleSession::with('user')
+            ->selectRaw('
+                user_id,
+                COUNT(*) as session_count,
+                SUM(duration_seconds) as total_duration,
+                AVG(duration_seconds) as avg_duration
+            ')
+            ->groupBy('user_id')
+            ->orderBy('session_count', 'desc')
+            ->limit(10)
+            ->get();
+
+        // Get activity statistics by action type
+        $activityStats = ActivityLog::selectRaw('
+            action,
+            COUNT(*) as count
+        ')
+        ->groupBy('action')
+        ->orderBy('count', 'desc')
+        ->limit(10)
+        ->get();
         
         return Inertia::render('Admin/Dashboard', [
             'user' => $user,
@@ -75,15 +102,10 @@ class AdminDashboardController extends Controller
             'recentActivities' => $recentActivities,
             'allPenalties' => $allPenalties,
             'employeeStats' => $employeeStats,
+            'idleSessionStats' => $idleSessionStats,
+            'activityStats' => $activityStats,
             'greeting' => $this->getGreeting($user),
         ]);
-    }
-    
-    private function getIdleSessionsCount()
-    {
-        // This would typically check for sessions that haven't been active
-        // For now, we'll return a placeholder
-        return 0;
     }
     
     private function getGreeting($user)

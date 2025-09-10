@@ -79,7 +79,7 @@ class IdleSetting extends Model
             [
                 'idle_timeout' => 5,
                 'idle_monitoring_enabled' => true,
-                'max_idle_warnings' => 2,
+                'max_idle_warnings' => 3,
             ]
         );
     }

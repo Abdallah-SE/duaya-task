@@ -48,10 +48,11 @@ Route::middleware(['auth', 'log.activity'])->group(function () {
 });
 
 // API routes for idle monitoring
-Route::prefix('api/idle-monitoring')->middleware(['auth:sanctum'])->group(function () {
+Route::prefix('api/idle-monitoring')->middleware(['auth', 'log.activity'])->group(function () {
     Route::post('/start-session', [IdleMonitoringController::class, 'startIdleSession']);
     Route::post('/end-session', [IdleMonitoringController::class, 'endIdleSession']);
     Route::post('/handle-warning', [IdleMonitoringController::class, 'handleIdleWarning']);
     Route::get('/settings', [IdleMonitoringController::class, 'getSettings']);
     Route::post('/update-settings', [IdleMonitoringController::class, 'updateSettings']);
+    Route::get('/test-db', [IdleMonitoringController::class, 'testDatabase']);
 });
