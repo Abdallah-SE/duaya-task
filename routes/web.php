@@ -2,6 +2,8 @@
 
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\DashboardController;
+use App\Http\Controllers\AdminDashboardController;
+use App\Http\Controllers\EmployeeDashboardController;
 use App\Http\Controllers\ActivityController;
 use App\Http\Controllers\SettingsController;
 use App\Http\Controllers\AuthController;
@@ -12,11 +14,27 @@ Route::get('/login', [AuthController::class, 'showLogin'])->name('login');
 Route::post('/login', [AuthController::class, 'login']);
 Route::post('/logout', [AuthController::class, 'logout'])->name('logout');
 
+// Separate login routes
+Route::get('/admin/login', [AuthController::class, 'showAdminLogin'])->name('admin.login');
+Route::post('/admin/login', [AuthController::class, 'adminLogin']);
+Route::get('/employee/login', [AuthController::class, 'showEmployeeLogin'])->name('employee.login');
+Route::post('/employee/login', [AuthController::class, 'employeeLogin']);
+
 // Protected routes
 Route::middleware(['auth', 'log.activity'])->group(function () {
-    // Dashboard
+    // General Dashboard (fallback)
     Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
     Route::get('/', [DashboardController::class, 'index'])->name('home');
+    
+    // Admin Dashboard
+    Route::prefix('admin')->middleware('role:admin')->group(function () {
+        Route::get('/dashboard', [AdminDashboardController::class, 'index'])->name('admin.dashboard');
+    });
+    
+    // Employee Dashboard
+    Route::prefix('employee')->middleware('role:employee')->group(function () {
+        Route::get('/dashboard', [EmployeeDashboardController::class, 'index'])->name('employee.dashboard');
+    });
     
     // Activities
     Route::get('/activities', [ActivityController::class, 'index'])->name('activities.index');
@@ -37,4 +55,3 @@ Route::prefix('api/idle-monitoring')->middleware(['auth:sanctum'])->group(functi
     Route::get('/settings', [IdleMonitoringController::class, 'getSettings']);
     Route::post('/update-settings', [IdleMonitoringController::class, 'updateSettings']);
 });
-Route::get('/test-tailwind', function () { return Inertia::render('TestTailwind'); });

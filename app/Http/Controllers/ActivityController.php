@@ -50,7 +50,7 @@ class ActivityController extends Controller
             'user_id' => $request->user_id,
             'reason' => $request->reason,
             'count' => $request->count ?? 1,
-            'penalty_date' => now(),
+            'date' => now(),
             'metadata' => $request->metadata ?? [],
         ]);
         

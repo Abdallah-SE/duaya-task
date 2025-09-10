@@ -12,7 +12,7 @@ class SettingsController extends Controller
     {
         $user = $request->user();
         $userSettings = $user->getSettings();
-        $userPenalties = $user->penalties()->latest('penalty_date')->get();
+        $userPenalties = $user->penalties()->latest('date')->get();
         
         return Inertia::render('Settings/Index', [
             'user' => $user,

@@ -20,6 +20,22 @@ class AuthController extends Controller
     }
     
     /**
+     * Show the admin login form.
+     */
+    public function showAdminLogin()
+    {
+        return Inertia::render('Auth/AdminLogin');
+    }
+    
+    /**
+     * Show the employee login form.
+     */
+    public function showEmployeeLogin()
+    {
+        return Inertia::render('Auth/EmployeeLogin');
+    }
+    
+    /**
      * Handle user login.
      */
     public function login(Request $request)
@@ -27,12 +43,24 @@ class AuthController extends Controller
         $credentials = $request->validate([
             'email' => 'required|email',
             'password' => 'required|string',
+            'role' => 'required|in:admin,employee',
         ]);
         
-        if (Auth::attempt($credentials)) {
+        if (Auth::attempt([
+            'email' => $credentials['email'],
+            'password' => $credentials['password']
+        ])) {
             $request->session()->regenerate();
             
             $user = Auth::user();
+            
+            // Check if user has the requested role
+            if (!$user->hasRole($credentials['role'])) {
+                Auth::logout();
+                throw ValidationException::withMessages([
+                    'email' => 'You do not have access with the selected role.',
+                ]);
+            }
             
             // Log login activity
             ActivityLog::logActivity(
@@ -48,7 +76,102 @@ class AuthController extends Controller
             // Get or create idle settings for the user
             $user->getIdleSettings();
             
-            return redirect()->intended('/dashboard');
+            // Redirect based on role
+            if ($user->hasRole('admin')) {
+                return redirect()->intended('/admin/dashboard');
+            } else {
+                return redirect()->intended('/employee/dashboard');
+            }
+        }
+        
+        throw ValidationException::withMessages([
+            'email' => 'The provided credentials do not match our records.',
+        ]);
+    }
+    
+    /**
+     * Handle admin login.
+     */
+    public function adminLogin(Request $request)
+    {
+        $credentials = $request->validate([
+            'email' => 'required|email',
+            'password' => 'required|string',
+        ]);
+        
+        if (Auth::attempt($credentials)) {
+            $user = Auth::user();
+            
+            // Check if user has admin role
+            if (!$user->hasRole('admin')) {
+                Auth::logout();
+                throw ValidationException::withMessages([
+                    'email' => 'You do not have admin access.',
+                ]);
+            }
+            
+            $request->session()->regenerate();
+            
+            // Log login activity
+            ActivityLog::logActivity(
+                userId: $user->id,
+                action: 'admin_login',
+                subjectType: 'App\Models\User',
+                subjectId: $user->id,
+                ipAddress: $request->ip(),
+                device: $this->getDeviceInfo($request),
+                browser: $this->getBrowserInfo($request)
+            );
+            
+            // Get or create idle settings for the user
+            $user->getIdleSettings();
+            
+            return redirect()->intended('/admin/dashboard');
+        }
+        
+        throw ValidationException::withMessages([
+            'email' => 'The provided credentials do not match our records.',
+        ]);
+    }
+    
+    /**
+     * Handle employee login.
+     */
+    public function employeeLogin(Request $request)
+    {
+        $credentials = $request->validate([
+            'email' => 'required|email',
+            'password' => 'required|string',
+        ]);
+        
+        if (Auth::attempt($credentials)) {
+            $user = Auth::user();
+            
+            // Check if user has employee role
+            if (!$user->hasRole('employee')) {
+                Auth::logout();
+                throw ValidationException::withMessages([
+                    'email' => 'You do not have employee access.',
+                ]);
+            }
+            
+            $request->session()->regenerate();
+            
+            // Log login activity
+            ActivityLog::logActivity(
+                userId: $user->id,
+                action: 'employee_login',
+                subjectType: 'App\Models\User',
+                subjectId: $user->id,
+                ipAddress: $request->ip(),
+                device: $this->getDeviceInfo($request),
+                browser: $this->getBrowserInfo($request)
+            );
+            
+            // Get or create idle settings for the user
+            $user->getIdleSettings();
+            
+            return redirect()->intended('/employee/dashboard');
         }
         
         throw ValidationException::withMessages([

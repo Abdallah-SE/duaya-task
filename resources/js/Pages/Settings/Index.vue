@@ -114,7 +114,7 @@
                                 <p class="text-sm text-red-600">Count: {{ penalty.count }}</p>
                             </div>
                             <div class="text-sm text-red-600">
-                                {{ formatDate(penalty.penalty_date) }}
+                                {{ formatDate(penalty.date) }}
                             </div>
                         </div>
                     </div>

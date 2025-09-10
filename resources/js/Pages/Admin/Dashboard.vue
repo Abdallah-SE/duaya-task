@@ -1,12 +1,15 @@
 <template>
     <AppLayout :user="user" :user-settings="userSettings">
         <div class="space-y-6">
-            <!-- Header -->
+            <!-- Header with Greeting -->
             <div class="md:flex md:items-center md:justify-between">
                 <div class="flex-1 min-w-0">
                     <h2 class="text-2xl font-bold leading-7 text-gray-900 sm:text-3xl sm:truncate">
-                        Activity Dashboard
+                        {{ greeting }}
                     </h2>
+                    <p class="mt-1 text-sm text-gray-500">
+                        Welcome to the Admin Dashboard - Monitor and manage all system activities
+                    </p>
                 </div>
                 <div class="mt-4 flex md:mt-0 md:ml-4">
                     <button @click="refreshData" 
@@ -19,7 +22,7 @@
                 </div>
             </div>
 
-            <!-- Stats Cards -->
+            <!-- Admin Stats Cards -->
             <div class="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4">
                 <div class="bg-white overflow-hidden shadow rounded-lg">
                     <div class="p-5">
@@ -80,24 +83,6 @@
                         <div class="flex items-center">
                             <div class="flex-shrink-0">
                                 <svg class="h-6 w-6 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.732-.833-2.5 0L4.268 19.5c-.77.833.192 2.5 1.732 2.5z" />
-                                </svg>
-                            </div>
-                            <div class="ml-5 w-0 flex-1">
-                                <dl>
-                                    <dt class="text-sm font-medium text-gray-500 truncate">Idle Sessions</dt>
-                                    <dd class="text-lg font-medium text-gray-900">{{ stats.idleSessions }}</dd>
-                                </dl>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                <div class="bg-white overflow-hidden shadow rounded-lg">
-                    <div class="p-5">
-                        <div class="flex items-center">
-                            <div class="flex-shrink-0">
-                                <svg class="h-6 w-6 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
                                 </svg>
                             </div>
@@ -110,13 +95,49 @@
                         </div>
                     </div>
                 </div>
+
+                <div class="bg-white overflow-hidden shadow rounded-lg">
+                    <div class="p-5">
+                        <div class="flex items-center">
+                            <div class="flex-shrink-0">
+                                <svg class="h-6 w-6 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
+                                </svg>
+                            </div>
+                            <div class="ml-5 w-0 flex-1">
+                                <dl>
+                                    <dt class="text-sm font-medium text-gray-500 truncate">Admin Users</dt>
+                                    <dd class="text-lg font-medium text-gray-900">{{ stats.adminUsers }}</dd>
+                                </dl>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="bg-white overflow-hidden shadow rounded-lg">
+                    <div class="p-5">
+                        <div class="flex items-center">
+                            <div class="flex-shrink-0">
+                                <svg class="h-6 w-6 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
+                                </svg>
+                            </div>
+                            <div class="ml-5 w-0 flex-1">
+                                <dl>
+                                    <dt class="text-sm font-medium text-gray-500 truncate">Employee Users</dt>
+                                    <dd class="text-lg font-medium text-gray-900">{{ stats.employeeUsers }}</dd>
+                                </dl>
+                            </div>
+                        </div>
+                    </div>
+                </div>
             </div>
 
             <!-- Recent Activities -->
             <div class="bg-white shadow overflow-hidden sm:rounded-md">
                 <div class="px-4 py-5 sm:px-6">
                     <h3 class="text-lg leading-6 font-medium text-gray-900">Recent Activities</h3>
-                    <p class="mt-1 max-w-2xl text-sm text-gray-500">Latest user activities in the system</p>
+                    <p class="mt-1 max-w-2xl text-sm text-gray-500">Latest user activities across the system</p>
                 </div>
                 <ul class="divide-y divide-gray-200">
                     <li v-for="activity in recentActivities" :key="activity.id" class="px-4 py-4 sm:px-6">
@@ -125,16 +146,19 @@
                                 <div class="flex-shrink-0">
                                     <div class="h-8 w-8 rounded-full bg-gray-200 flex items-center justify-center">
                                         <span class="text-sm font-medium text-gray-600">
-                                            {{ activity.user.name.charAt(0).toUpperCase() }}
+                                            {{ activity.user?.name?.charAt(0)?.toUpperCase() || '?' }}
                                         </span>
                                     </div>
                                 </div>
                                 <div class="ml-4">
                                     <div class="text-sm font-medium text-gray-900">
-                                        {{ activity.user.name }}
+                                        {{ activity.user?.name || 'Unknown User' }}
                                     </div>
                                     <div class="text-sm text-gray-500">
-                                        {{ activity.description }}
+                                        {{ activity.action }}
+                                    </div>
+                                    <div class="text-xs text-gray-400">
+                                        {{ activity.device }} • {{ activity.browser }} • {{ activity.ip_address }}
                                     </div>
                                 </div>
                             </div>
@@ -146,17 +170,20 @@
                 </ul>
             </div>
 
-            <!-- User Penalties -->
-            <div v-if="userPenalties.length > 0" class="bg-white shadow overflow-hidden sm:rounded-md">
+            <!-- All Penalties -->
+            <div v-if="allPenalties.length > 0" class="bg-white shadow overflow-hidden sm:rounded-md">
                 <div class="px-4 py-5 sm:px-6">
-                    <h3 class="text-lg leading-6 font-medium text-gray-900">Your Penalties</h3>
-                    <p class="mt-1 max-w-2xl text-sm text-gray-500">Penalties applied to your account</p>
+                    <h3 class="text-lg leading-6 font-medium text-gray-900">Recent Penalties</h3>
+                    <p class="mt-1 max-w-2xl text-sm text-gray-500">Penalties applied across all users</p>
                 </div>
                 <ul class="divide-y divide-gray-200">
-                    <li v-for="penalty in userPenalties" :key="penalty.id" class="px-4 py-4 sm:px-6">
+                    <li v-for="penalty in allPenalties" :key="penalty.id" class="px-4 py-4 sm:px-6">
                         <div class="flex items-center justify-between">
                             <div>
                                 <div class="text-sm font-medium text-gray-900">
+                                    {{ penalty.user?.name || 'Unknown User' }}
+                                </div>
+                                <div class="text-sm text-gray-500">
                                     {{ penalty.reason }}
                                 </div>
                                 <div class="text-sm text-gray-500">
@@ -184,7 +211,9 @@ const props = defineProps({
     userSettings: Object,
     stats: Object,
     recentActivities: Array,
-    userPenalties: Array
+    allPenalties: Array,
+    employeeStats: Array,
+    greeting: String
 })
 
 const refreshData = () => {
@@ -195,4 +224,3 @@ const formatDate = (dateString) => {
     return new Date(dateString).toLocaleString()
 }
 </script>
-
