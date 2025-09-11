@@ -63,11 +63,13 @@ class User extends Authenticatable
 
     /**
      * Get the user's idle settings.
+     * Note: idle_settings table stores global settings, not per-user settings.
+     * Use getIdleSettings() method instead.
      */
-    public function idleSettings()
-    {
-        return $this->hasOne(\App\Models\IdleSetting::class);
-    }
+    // public function idleSettings()
+    // {
+    //     return $this->hasOne(\App\Models\IdleSetting::class);
+    // }
 
     /**
      * Get default idle settings.

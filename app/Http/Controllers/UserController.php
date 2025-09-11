@@ -4,27 +4,50 @@ namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Auth;
 use Inertia\Inertia;
 use App\Models\User;
 use App\Models\ActivityLog;
 use App\Models\IdleSetting;
+use App\Models\Penalty;
 
 class UserController extends Controller
 {
     /**
-     * Display a listing of users (Admin only).
+     * Display a listing of users (Admin and Employee).
      */
     public function index()
     {
         $this->authorize('viewAny', User::class);
         
-        $users = User::with(['roles', 'idleSettings', 'penalties'])
-            ->withCount(['activityLogs', 'idleSessions'])
-            ->paginate(15);
+        $currentUser = Auth::user();
         
-        // Log admin activity
+        // Build query based on user role
+        $query = User::with(['roles', 'penalties'])
+            ->withCount(['activityLogs', 'idleSessions']);
+        
+        // If user is employee, only show employees
+        if ($currentUser->hasRole('employee') && !$currentUser->hasRole('admin')) {
+            $query->whereHas('roles', function($q) {
+                $q->where('name', 'employee');
+            });
+        }
+        
+        $users = $query->paginate(15);
+        
+        // Enhanced stats for user management
+        $stats = [
+            'totalUsers' => $users->total(),
+            'activeUsers' => $users->where('activity_logs_count', '>', 0)->count(),
+            'totalActivities' => $users->sum('activity_logs_count'),
+            'totalPenalties' => $users->sum(function($user) {
+                return $user->penalties->count();
+            })
+        ];
+        
+        // Log activity
         ActivityLog::logActivity(
-            userId: auth()->id(),
+            userId: Auth::id(),
             action: 'view_users',
             subjectType: 'App\Models\User',
             subjectId: null,
@@ -33,9 +56,30 @@ class UserController extends Controller
             browser: $this->getBrowserInfo(request())
         );
         
-        return Inertia::render('Admin/Users/Index', [
-            'users' => $users
-        ]);
+        // Determine which component to render based on the route
+        $isEmployeeRoute = request()->is('employee/users*');
+        
+        if ($isEmployeeRoute) {
+            // Get user settings for the current user
+            $userSettings = $currentUser->getIdleSettings();
+            $isIdleMonitoringEnabled = $currentUser->isIdleMonitoringEnabled();
+            
+            return Inertia::render('Employee/Users/Index', [
+                'users' => $users,
+                'user' => $currentUser,
+                'userSettings' => $userSettings,
+                'initialSettings' => $userSettings,
+                'canControlIdleMonitoring' => $currentUser->hasRole('admin'),
+                'isIdleMonitoringEnabled' => $isIdleMonitoringEnabled,
+                'stats' => $stats
+            ]);
+        } else {
+            return Inertia::render('Admin/Users/Index', [
+                'users' => $users,
+                'currentUser' => $currentUser,
+                'stats' => $stats
+            ]);
+        }
     }
     
     /**
@@ -45,7 +89,10 @@ class UserController extends Controller
     {
         $this->authorize('create', User::class);
         
-        return Inertia::render('Admin/Users/Create');
+        // For modal-based approach, we don't need a separate page
+        $currentUser = Auth::user();
+        $redirectRoute = $currentUser->hasRole('admin') ? 'admin.users.index' : 'employee.users.index';
+        return redirect()->route($redirectRoute);
     }
     
     /**
@@ -55,11 +102,19 @@ class UserController extends Controller
     {
         $this->authorize('create', User::class);
         
+        $currentUser = Auth::user();
+        
+        // Define validation rules based on user role
+        $roleValidation = 'required|string|in:employee';
+        if ($currentUser->hasRole('admin')) {
+            $roleValidation = 'required|string|in:admin,employee';
+        }
+        
         $validated = $request->validate([
             'name' => 'required|string|max:255',
             'email' => 'required|string|email|max:255|unique:users',
             'password' => 'required|string|min:8|confirmed',
-            'role' => 'required|string|in:admin,employee',
+            'role' => $roleValidation,
         ]);
         
         $user = User::create([
@@ -74,9 +129,9 @@ class UserController extends Controller
         // Create default idle settings
         IdleSetting::getForUser($user->id);
         
-        // Log admin activity
+        // Log activity
         ActivityLog::logActivity(
-            userId: auth()->id(),
+            userId: Auth::id(),
             action: 'create_user',
             subjectType: 'App\Models\User',
             subjectId: $user->id,
@@ -85,7 +140,8 @@ class UserController extends Controller
             browser: $this->getBrowserInfo($request)
         );
         
-        return redirect()->route('admin.users.index')
+        $redirectRoute = $currentUser->hasRole('admin') ? 'admin.users.index' : 'employee.users.index';
+        return redirect()->route($redirectRoute)
             ->with('success', 'User created successfully.');
     }
     
@@ -96,26 +152,10 @@ class UserController extends Controller
     {
         $this->authorize('view', $user);
         
-        $user->load(['roles', 'idleSettings', 'penalties', 'activityLogs' => function($query) {
-            $query->latest()->limit(10);
-        }, 'idleSessions' => function($query) {
-            $query->latest()->limit(10);
-        }]);
-        
-        // Log admin activity
-        ActivityLog::logActivity(
-            userId: auth()->id(),
-            action: 'view_user',
-            subjectType: 'App\Models\User',
-            subjectId: $user->id,
-            ipAddress: request()->ip(),
-            device: $this->getDeviceInfo(request()),
-            browser: $this->getBrowserInfo(request())
-        );
-        
-        return Inertia::render('Admin/Users/Show', [
-            'user' => $user
-        ]);
+        // For modal-based approach, we don't need a separate page
+        $currentUser = Auth::user();
+        $redirectRoute = $currentUser->hasRole('admin') ? 'admin.users.index' : 'employee.users.index';
+        return redirect()->route($redirectRoute);
     }
     
     /**
@@ -125,11 +165,10 @@ class UserController extends Controller
     {
         $this->authorize('update', $user);
         
-        $user->load('roles');
-        
-        return Inertia::render('Admin/Users/Edit', [
-            'user' => $user
-        ]);
+        // For modal-based approach, we don't need a separate page
+        $currentUser = Auth::user();
+        $redirectRoute = $currentUser->hasRole('admin') ? 'admin.users.index' : 'employee.users.index';
+        return redirect()->route($redirectRoute);
     }
     
     /**
@@ -139,11 +178,19 @@ class UserController extends Controller
     {
         $this->authorize('update', $user);
         
+        $currentUser = Auth::user();
+        
+        // Define validation rules based on user role
+        $roleValidation = 'required|string|in:employee';
+        if ($currentUser->hasRole('admin')) {
+            $roleValidation = 'required|string|in:admin,employee';
+        }
+        
         $validated = $request->validate([
             'name' => 'required|string|max:255',
             'email' => 'required|string|email|max:255|unique:users,email,' . $user->id,
             'password' => 'nullable|string|min:8|confirmed',
-            'role' => 'required|string|in:admin,employee',
+            'role' => $roleValidation,
         ]);
         
         $user->update([
@@ -155,12 +202,15 @@ class UserController extends Controller
             $user->update(['password' => Hash::make($validated['password'])]);
         }
         
-        // Update role
-        $user->syncRoles([$validated['role']]);
+        // Update role (only if user has permission to change to that role)
+        if ($currentUser->hasRole('admin') || 
+            ($currentUser->hasRole('employee') && $validated['role'] === 'employee')) {
+            $user->syncRoles([$validated['role']]);
+        }
         
-        // Log admin activity
+        // Log activity
         ActivityLog::logActivity(
-            userId: auth()->id(),
+            userId: Auth::id(),
             action: 'update_user',
             subjectType: 'App\Models\User',
             subjectId: $user->id,
@@ -169,7 +219,8 @@ class UserController extends Controller
             browser: $this->getBrowserInfo($request)
         );
         
-        return redirect()->route('admin.users.index')
+        $redirectRoute = $currentUser->hasRole('admin') ? 'admin.users.index' : 'employee.users.index';
+        return redirect()->route($redirectRoute)
             ->with('success', 'User updated successfully.');
     }
     
@@ -182,7 +233,7 @@ class UserController extends Controller
         
         // Log admin activity before deletion
         ActivityLog::logActivity(
-            userId: auth()->id(),
+            userId: Auth::id(),
             action: 'delete_user',
             subjectType: 'App\Models\User',
             subjectId: $user->id,
@@ -193,7 +244,9 @@ class UserController extends Controller
         
         $user->delete();
         
-        return redirect()->route('admin.users.index')
+        $currentUser = Auth::user();
+        $redirectRoute = $currentUser->hasRole('admin') ? 'admin.users.index' : 'employee.users.index';
+        return redirect()->route($redirectRoute)
             ->with('success', 'User deleted successfully.');
     }
     

@@ -3,8 +3,9 @@
 namespace App\Policies;
 
 use App\Models\User;
+use App\Models\Employee;
 
-class UserPolicy
+class EmployeePolicy
 {
     /**
      * Determine whether the user can view any models.
@@ -17,16 +18,16 @@ class UserPolicy
     /**
      * Determine whether the user can view the model.
      */
-    public function view(User $user, User $model): bool
+    public function view(User $user, Employee $employee): bool
     {
-        // Admin can view all users
+        // Admin can view all employees
         if ($user->hasRole('admin')) {
             return true;
         }
         
         // Employee can view themselves and other employees
         if ($user->hasRole('employee')) {
-            return $user->id === $model->id || $model->hasRole('employee');
+            return $user->id === $employee->user_id || $employee->user->hasRole('employee');
         }
         
         return false;
@@ -43,16 +44,16 @@ class UserPolicy
     /**
      * Determine whether the user can update the model.
      */
-    public function update(User $user, User $model): bool
+    public function update(User $user, Employee $employee): bool
     {
-        // Admin can update all users
+        // Admin can update all employees
         if ($user->hasRole('admin')) {
             return true;
         }
         
         // Employee can update themselves and other employees
         if ($user->hasRole('employee')) {
-            return $user->id === $model->id || $model->hasRole('employee');
+            return $user->id === $employee->user_id || $employee->user->hasRole('employee');
         }
         
         return false;
@@ -61,16 +62,16 @@ class UserPolicy
     /**
      * Determine whether the user can delete the model.
      */
-    public function delete(User $user, User $model): bool
+    public function delete(User $user, Employee $employee): bool
     {
-        // Admin can delete all users except themselves
+        // Admin can delete all employees except themselves
         if ($user->hasRole('admin')) {
-            return $user->id !== $model->id;
+            return $user->id !== $employee->user_id;
         }
         
-        // Employee can delete other employees but not themselves or admins
+        // Employee can delete other employees but not themselves
         if ($user->hasRole('employee')) {
-            return $user->id !== $model->id && $model->hasRole('employee');
+            return $user->id !== $employee->user_id && $employee->user->hasRole('employee');
         }
         
         return false;

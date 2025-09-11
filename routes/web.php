@@ -8,17 +8,22 @@ use App\Http\Controllers\ActivityController;
 use App\Http\Controllers\SettingsController;
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\IdleMonitoringController;
+use App\Http\Controllers\UserController;
+use App\Http\Controllers\EmployeeController;
 
-// Authentication routes
-Route::get('/login', [AuthController::class, 'showLogin'])->name('login');
-Route::post('/login', [AuthController::class, 'login']);
+// Authentication routes (guest only)
+Route::middleware('guest')->group(function () {
+    Route::get('/login', [AuthController::class, 'showLogin'])->name('login');
+    Route::post('/login', [AuthController::class, 'login']);
+    
+    // Separate login routes
+    Route::get('/admin/login', [AuthController::class, 'showAdminLogin'])->name('admin.login');
+    Route::post('/admin/login', [AuthController::class, 'adminLogin']);
+    Route::get('/employee/login', [AuthController::class, 'showEmployeeLogin'])->name('employee.login');
+    Route::post('/employee/login', [AuthController::class, 'employeeLogin']);
+});
+
 Route::post('/logout', [AuthController::class, 'logout'])->name('logout');
-
-// Separate login routes
-Route::get('/admin/login', [AuthController::class, 'showAdminLogin'])->name('admin.login');
-Route::post('/admin/login', [AuthController::class, 'adminLogin']);
-Route::get('/employee/login', [AuthController::class, 'showEmployeeLogin'])->name('employee.login');
-Route::post('/employee/login', [AuthController::class, 'employeeLogin']);
 
 // Protected routes
 Route::middleware(['auth', 'log.activity'])->group(function () {
@@ -29,11 +34,23 @@ Route::middleware(['auth', 'log.activity'])->group(function () {
     // Admin Dashboard
     Route::prefix('admin')->middleware('role:admin')->group(function () {
         Route::get('/dashboard', [AdminDashboardController::class, 'index'])->name('admin.dashboard');
+        
+        // User Management Routes
+        Route::resource('users', UserController::class)->names('admin.users');
+        
+        // Employee Management Routes
+        Route::resource('employees', EmployeeController::class)->names('admin.employees');
     });
     
     // Employee Dashboard
     Route::prefix('employee')->middleware('role:employee')->group(function () {
         Route::get('/dashboard', [EmployeeDashboardController::class, 'index'])->name('employee.dashboard');
+        
+        // Employee User Management Routes (employees can manage other employees)
+        Route::resource('users', UserController::class)->names('employee.users');
+        
+        // Employee Management Routes
+        Route::resource('employees', EmployeeController::class)->names('employee.employees');
     });
     
     // Activities

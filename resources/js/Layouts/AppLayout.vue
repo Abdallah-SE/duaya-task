@@ -8,12 +8,12 @@
                         <h1 class="text-xl font-semibold text-gray-900">Duaya Task - Activity Monitor</h1>
                     </div>
                     <div class="flex items-center space-x-4">
-                        <span class="text-sm text-gray-700">{{ user.name }}</span>
-                        <span v-if="user.employee" class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                        <span class="text-sm text-gray-700">{{ user?.name || 'User' }}</span>
+                        <span v-if="user?.employee" class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
                             {{ user.employee.department }} - {{ user.employee.job_title }}
                         </span>
                         <span v-else class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
-                            {{ user.role }}
+                            {{ user?.role || 'Employee' }}
                         </span>
                         <button @click="logout" 
                                 class="text-sm text-gray-500 hover:text-gray-700">
@@ -31,6 +31,7 @@
 
         <!-- Idle Monitoring Component -->
         <IdleMonitor 
+            v-if="user?.id"
             :user-id="user.id"
             :initial-settings="initialSettings || userSettings"
             :can-control-idle-monitoring="canControlIdleMonitoring"
