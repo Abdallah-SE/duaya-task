@@ -85,6 +85,18 @@
       @close="closeViewModal"
       @edit="openEditModal(selectedUser)"
     />
+
+    <!-- Confirmation Modal -->
+    <ConfirmationModal
+      :show="showConfirmationModal"
+      :title="confirmationConfig.title"
+      :message="confirmationConfig.message"
+      :confirm-text="confirmationConfig.confirmText"
+      :cancel-text="confirmationConfig.cancelText"
+      :loading="confirmationConfig.loading"
+      @confirm="handleConfirmationConfirm"
+      @cancel="handleConfirmationCancel"
+    />
   </AppLayout>
 </template>
 
@@ -96,6 +108,8 @@ import UsersTable from '@/Components/Molecules/UsersTable.vue'
 import UserModal from '@/Components/Organisms/UserModal.vue'
 import UserViewModal from '@/Components/Organisms/UserViewModal.vue'
 import Button from '@/Components/Atoms/Button.vue'
+import { useToastNotifications } from '@/Composables/useToast.js'
+import ConfirmationModal from '@/Components/Atoms/ConfirmationModal.vue'
 
 const props = defineProps({
   user: Object,
@@ -106,6 +120,17 @@ const props = defineProps({
   users: Object,
   stats: Object
 })
+
+// Toast notifications
+const { 
+  showSuccess, 
+  showError, 
+  showDeleteConfirmation,
+  showConfirmationModal,
+  confirmationConfig,
+  handleConfirmationConfirm,
+  handleConfirmationCancel
+} = useToastNotifications()
 
 // Modal states
 const showCreateModal = ref(false)
@@ -172,10 +197,12 @@ const createUser = (formData) => {
     onSuccess: () => {
       closeCreateModal()
       globalError.value = ''
+      showSuccess('User created successfully!')
     },
     onError: (errors) => {
       createErrors.value = errors
       globalError.value = 'Failed to create user. Please check the form for errors.'
+      showError('Failed to create user. Please check the form for errors.')
     },
     onFinish: () => {
       createLoading.value = false
@@ -192,10 +219,12 @@ const updateUser = (formData) => {
     onSuccess: () => {
       closeEditModal()
       globalError.value = ''
+      showSuccess('User updated successfully!')
     },
     onError: (errors) => {
       editErrors.value = errors
       globalError.value = 'Failed to update user. Please check the form for errors.'
+      showError('Failed to update user. Please check the form for errors.')
     },
     onFinish: () => {
       editLoading.value = false
@@ -204,22 +233,27 @@ const updateUser = (formData) => {
 }
 
 const deleteUser = (userId) => {
-  if (confirm('Are you sure you want to delete this user?')) {
+  const user = props.users.data.find(u => u.id === userId)
+  const userName = user ? user.name : 'this user'
+  
+  showDeleteConfirmation(userName, () => {
     deleteLoading.value = true
     globalError.value = ''
     
     router.delete(`/employee/users/${userId}`, {
       onSuccess: () => {
         globalError.value = ''
+        showSuccess('User deleted successfully!')
       },
       onError: (errors) => {
         globalError.value = 'Failed to delete user. Please try again.'
+        showError('Failed to delete user. Please try again.')
       },
       onFinish: () => {
         deleteLoading.value = false
       }
     })
-  }
+  })
 }
 
 // Table event handlers

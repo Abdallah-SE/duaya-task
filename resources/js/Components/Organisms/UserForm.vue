@@ -19,15 +19,15 @@
       />
     </div>
     
-    <div class="grid grid-cols-1 gap-6 sm:grid-cols-2">
+    <div v-if="isCreate" class="grid grid-cols-1 gap-6 sm:grid-cols-2">
       <FormField
         v-model="form.password"
         type="password"
         label="Password"
         placeholder="Enter password"
         :error="errors.password"
-        :required="isCreate"
-        :help="isCreate ? 'Minimum 8 characters' : 'Leave blank to keep current password'"
+        :required="true"
+        help="Minimum 8 characters"
       />
       
       <FormField
@@ -36,17 +36,6 @@
         label="Confirm Password"
         placeholder="Confirm password"
         :error="errors.password_confirmation"
-        :required="isCreate"
-      />
-    </div>
-    
-    <div v-if="showRoleField" class="grid grid-cols-1 gap-6 sm:grid-cols-2">
-      <SelectField
-        v-model="form.role"
-        label="Role"
-        placeholder="Select a role"
-        :options="roleOptions"
-        :error="errors.role"
         :required="true"
       />
     </div>
@@ -74,9 +63,8 @@
 </template>
 
 <script setup>
-import { ref, computed, watch } from 'vue'
+import { ref, watch } from 'vue'
 import FormField from '@/Components/Molecules/FormField.vue'
-import SelectField from '@/Components/Molecules/SelectField.vue'
 import Button from '@/Components/Atoms/Button.vue'
 
 const props = defineProps({
@@ -95,17 +83,6 @@ const props = defineProps({
   isCreate: {
     type: Boolean,
     default: false
-  },
-  showRoleField: {
-    type: Boolean,
-    default: true
-  },
-  availableRoles: {
-    type: Array,
-    default: () => [
-      { value: 'employee', label: 'Employee' },
-      { value: 'admin', label: 'Admin' }
-    ]
   }
 })
 
@@ -116,12 +93,8 @@ const form = ref({
   name: '',
   email: '',
   password: '',
-  password_confirmation: '',
-  role: ''
+  password_confirmation: ''
 })
-
-// Computed properties
-const roleOptions = computed(() => props.availableRoles)
 
 // Watch for initial data changes
 watch(() => props.initialData, (newData) => {
@@ -129,9 +102,8 @@ watch(() => props.initialData, (newData) => {
     form.value = {
       name: newData?.name || '',
       email: newData?.email || '',
-      password: '',
-      password_confirmation: '',
-      role: newData?.roles?.[0]?.name || ''
+      password: props.isCreate ? '' : undefined,
+      password_confirmation: props.isCreate ? '' : undefined
     }
   }
 }, { immediate: true, deep: true })
@@ -140,12 +112,10 @@ watch(() => props.initialData, (newData) => {
 const handleSubmit = () => {
   const formData = { ...form.value }
   
-  // Remove empty password fields for updates
+  // Remove password fields for updates (not needed for user updates)
   if (!props.isCreate) {
-    if (!formData.password) {
-      delete formData.password
-      delete formData.password_confirmation
-    }
+    delete formData.password
+    delete formData.password_confirmation
   }
   
   emit('submit', formData)

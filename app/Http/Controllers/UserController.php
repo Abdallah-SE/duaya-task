@@ -104,17 +104,10 @@ class UserController extends Controller
         
         $currentUser = Auth::user();
         
-        // Define validation rules based on user role
-        $roleValidation = 'required|string|in:employee';
-        if ($currentUser->hasRole('admin')) {
-            $roleValidation = 'required|string|in:admin,employee';
-        }
-        
         $validated = $request->validate([
             'name' => 'required|string|max:255',
             'email' => 'required|string|email|max:255|unique:users',
             'password' => 'required|string|min:8|confirmed',
-            'role' => $roleValidation,
         ]);
         
         $user = User::create([
@@ -123,11 +116,11 @@ class UserController extends Controller
             'password' => Hash::make($validated['password']),
         ]);
         
-        // Assign role
-        $user->assignRole($validated['role']);
+        // Assign default role as employee
+        $user->assignRole('employee');
         
         // Create default idle settings
-        IdleSetting::getForUser($user->id);
+        $user->getIdleSettings();
         
         // Log activity
         ActivityLog::logActivity(
@@ -180,33 +173,15 @@ class UserController extends Controller
         
         $currentUser = Auth::user();
         
-        // Define validation rules based on user role
-        $roleValidation = 'required|string|in:employee';
-        if ($currentUser->hasRole('admin')) {
-            $roleValidation = 'required|string|in:admin,employee';
-        }
-        
         $validated = $request->validate([
             'name' => 'required|string|max:255',
             'email' => 'required|string|email|max:255|unique:users,email,' . $user->id,
-            'password' => 'nullable|string|min:8|confirmed',
-            'role' => $roleValidation,
         ]);
         
         $user->update([
             'name' => $validated['name'],
             'email' => $validated['email'],
         ]);
-        
-        if ($validated['password']) {
-            $user->update(['password' => Hash::make($validated['password'])]);
-        }
-        
-        // Update role (only if user has permission to change to that role)
-        if ($currentUser->hasRole('admin') || 
-            ($currentUser->hasRole('employee') && $validated['role'] === 'employee')) {
-            $user->syncRoles([$validated['role']]);
-        }
         
         // Log activity
         ActivityLog::logActivity(

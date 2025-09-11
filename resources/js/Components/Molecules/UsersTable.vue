@@ -28,46 +28,14 @@
 
     <template #cell-email="{ row }">
       <div class="text-sm text-gray-900">{{ row.email }}</div>
-      <div class="text-sm text-gray-500">Joined {{ formatDate(row.created_at) }}</div>
     </template>
 
-    <template #cell-role="{ row }">
-      <Badge
-        :variant="getRoleBadgeVariant(row.roles[0]?.name)"
-        size="sm"
-      >
-        {{ row.roles[0]?.name || 'No Role' }}
-      </Badge>
+    <template #cell-created_at="{ row }">
+      <div class="text-sm text-gray-900">{{ formatDate(row.created_at) }}</div>
     </template>
 
-    <template #cell-activity_logs_count="{ row }">
-      <div class="flex items-center">
-        <span class="font-medium">{{ row.activity_logs_count }}</span>
-        <span class="ml-1 text-gray-500 text-xs">activities</span>
-      </div>
-    </template>
-
-    <template #cell-idle_sessions_count="{ row }">
-      <div class="flex items-center">
-        <span class="font-medium">{{ row.idle_sessions_count }}</span>
-        <span class="ml-1 text-gray-500 text-xs">sessions</span>
-      </div>
-    </template>
-
-    <template #cell-penalties_count="{ row }">
-      <div class="flex items-center">
-        <span class="font-medium">{{ row.penalties?.length || 0 }}</span>
-        <span class="ml-1 text-gray-500 text-xs">penalties</span>
-      </div>
-    </template>
-
-    <template #cell-status="{ row }">
-      <Badge
-        :variant="getStatusBadgeVariant(row)"
-        size="sm"
-      >
-        {{ getUserStatus(row) }}
-      </Badge>
+    <template #cell-updated_at="{ row }">
+      <div class="text-sm text-gray-900">{{ formatDate(row.updated_at) }}</div>
     </template>
 
     <template #cell-actions="{ row }">
@@ -113,7 +81,6 @@
 <script setup>
 import { computed } from 'vue'
 import TanStackTable from './TanStackTable.vue'
-import Badge from '@/Components/Atoms/Badge.vue'
 
 const props = defineProps({
   users: {
@@ -132,11 +99,8 @@ const emit = defineEmits(['view', 'edit', 'delete', 'search', 'sort', 'page-chan
 const columns = [
   { key: 'name', label: 'User', sortable: true, searchable: true },
   { key: 'email', label: 'Email', sortable: true, searchable: true },
-  { key: 'role', label: 'Role', sortable: true, searchable: true },
-  { key: 'activity_logs_count', label: 'Activities', sortable: true },
-  { key: 'idle_sessions_count', label: 'Idle Sessions', sortable: true },
-  { key: 'penalties_count', label: 'Penalties', sortable: true },
-  { key: 'status', label: 'Status', sortable: true, searchable: true },
+  { key: 'created_at', label: 'Created At', sortable: true, searchable: false },
+  { key: 'updated_at', label: 'Updated At', sortable: true, searchable: false },
   { key: 'actions', label: 'Actions', sortable: false, searchable: false }
 ]
 
@@ -161,46 +125,5 @@ const handlePerPageChange = (perPage) => {
 const formatDate = (date) => {
   if (!date) return 'N/A'
   return new Date(date).toLocaleString()
-}
-
-const getRoleBadgeVariant = (role) => {
-  switch (role) {
-    case 'admin':
-      return 'danger'
-    case 'employee':
-      return 'success'
-    default:
-      return 'default'
-  }
-}
-
-const getStatusBadgeVariant = (user) => {
-  const activityCount = user.activity_logs_count || 0
-  const penaltyCount = user.penalties?.length || 0
-  
-  if (activityCount === 0) {
-    return 'default'
-  } else if (penaltyCount > 2) {
-    return 'danger'
-  } else if (penaltyCount > 0) {
-    return 'warning'
-  } else {
-    return 'success'
-  }
-}
-
-const getUserStatus = (user) => {
-  const activityCount = user.activity_logs_count || 0
-  const penaltyCount = user.penalties?.length || 0
-  
-  if (activityCount === 0) {
-    return 'Inactive'
-  } else if (penaltyCount > 2) {
-    return 'High Risk'
-  } else if (penaltyCount > 0) {
-    return 'Warning'
-  } else {
-    return 'Active'
-  }
 }
 </script>
