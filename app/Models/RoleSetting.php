@@ -46,9 +46,15 @@ class RoleSetting extends Model
 
     /**
      * Update role setting and clear cache immediately.
+     * Prevents updating admin role settings.
      */
     public static function updateSetting(string $roleName, bool $enabled): bool
     {
+        // Prevent updating admin role settings
+        if ($roleName === 'admin') {
+            return false;
+        }
+
         $role = Role::where('name', $roleName)->first();
         if (!$role) return false;
 
@@ -65,15 +71,54 @@ class RoleSetting extends Model
 
     /**
      * Get all role settings efficiently (for admin dashboard).
+     * Includes all roles with admin marked as read-only.
      */
     public static function getAllSettings()
     {
-        return static::with('role:id,name')
+        // Get all roles from all guards
+        $adminRoles = \Spatie\Permission\Models\Role::where('guard_name', 'admin')->get();
+        $webRoles = \Spatie\Permission\Models\Role::where('guard_name', 'web')->get();
+        
+        // Get existing settings
+        $settings = static::with('role:id,name,guard_name')
             ->select('role_id', 'idle_monitoring_enabled')
             ->get()
-            ->mapWithKeys(function ($setting) {
-                return [$setting->role->name => $setting->idle_monitoring_enabled];
-            });
+            ->keyBy('role_id');
+        
+        // Build result with all roles
+        $result = [];
+        
+        // Add admin guard roles
+        foreach ($adminRoles as $role) {
+            $setting = $settings->get($role->id);
+            $result[] = [
+                'role_id' => $role->id,
+                'role_name' => $role->name,
+                'role_display_name' => ucfirst($role->name),
+                'guard_name' => $role->guard_name,
+                'idle_monitoring_enabled' => $setting ? $setting->idle_monitoring_enabled : true,
+                'is_admin' => $role->name === 'admin',
+                'created_at' => $setting ? $setting->created_at : now(),
+                'updated_at' => $setting ? $setting->updated_at : now(),
+            ];
+        }
+        
+        // Add web guard roles
+        foreach ($webRoles as $role) {
+            $setting = $settings->get($role->id);
+            $result[] = [
+                'role_id' => $role->id,
+                'role_name' => $role->name,
+                'role_display_name' => ucfirst($role->name),
+                'guard_name' => $role->guard_name,
+                'idle_monitoring_enabled' => $setting ? $setting->idle_monitoring_enabled : true,
+                'is_admin' => $role->name === 'admin',
+                'created_at' => $setting ? $setting->created_at : now(),
+                'updated_at' => $setting ? $setting->updated_at : now(),
+            ];
+        }
+        
+        return $result;
     }
 
     /**

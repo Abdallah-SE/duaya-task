@@ -39,6 +39,16 @@ class User extends Authenticatable
     ];
 
     /**
+     * The accessors to append to the model's array form.
+     *
+     * @var list<string>
+     */
+    protected $appends = [
+        'role_names',
+        'has_admin_role',
+    ];
+
+    /**
      * Get the attributes that should be cast.
      *
      * @return array<string, string>
@@ -113,32 +123,44 @@ class User extends Authenticatable
 
     /**
      * Check if idle monitoring is enabled for this user's role.
+     * Optimized version using single query instead of foreach loops.
      */
     public function isIdleMonitoringEnabled(): bool
     {
-        // Simple direct database check - no caching, no complexity
-        $userRoles = $this->getRoleNames();
-        Log::info('userRoles' );
-        Log::info($userRoles );
-        foreach ($userRoles as $roleName) {
-            $role = \Spatie\Permission\Models\Role::where('name', $roleName)->first();
-            if ($role) {
-                $setting = \App\Models\RoleSetting::where('role_id', $role->id)->first();
-                if ($setting && $setting->idle_monitoring_enabled) {
-                    Log::info('true' );
-                    Log::info(true );
-                    return true;
-                }
-            }
-        }
+        // Get user's role IDs in a single query (works with both guards)
+        $userRoleIds = $this->roles()->pluck('id');
         
-        return false;
+        if ($userRoleIds->isEmpty()) {
+            return false;
+        }
+
+        // Check if any of the user's roles have monitoring enabled
+        return \App\Models\RoleSetting::whereIn('role_id', $userRoleIds)
+            ->where('idle_monitoring_enabled', true)
+            ->exists();
     }
 
     /**
      * Check if user can control idle monitoring (admin only).
      */
     public function canControlIdleMonitoring(): bool
+    {
+        // Check if user has admin role (works with both guards)
+        return $this->hasRole('admin');
+    }
+
+    /**
+     * Get the user's role names for frontend.
+     */
+    public function getRoleNamesAttribute(): array
+    {
+        return $this->getRoleNames()->toArray();
+    }
+
+    /**
+     * Check if user has admin role for frontend.
+     */
+    public function getHasAdminRoleAttribute(): bool
     {
         return $this->hasRole('admin');
     }

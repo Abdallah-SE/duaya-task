@@ -20,7 +20,7 @@ class UserController extends Controller
     {
         $this->authorize('viewAny', User::class);
         
-        $currentUser = Auth::user();
+        $currentUser = auth('admin')->user() ?? Auth::user();
         
         // Build query based on user role
         $query = User::with(['roles', 'penalties'])
@@ -90,7 +90,7 @@ class UserController extends Controller
         $this->authorize('create', User::class);
         
         // For modal-based approach, we don't need a separate page
-        $currentUser = Auth::user();
+        $currentUser = auth('admin')->user() ?? Auth::user();
         $redirectRoute = $currentUser->hasRole('admin') ? 'admin.users.index' : 'employee.users.index';
         return redirect()->route($redirectRoute);
     }
@@ -102,7 +102,7 @@ class UserController extends Controller
     {
         $this->authorize('create', User::class);
         
-        $currentUser = Auth::user();
+        $currentUser = auth('admin')->user() ?? Auth::user();
         
         $validated = $request->validate([
             'name' => 'required|string|max:255',
@@ -146,7 +146,7 @@ class UserController extends Controller
         $this->authorize('view', $user);
         
         // For modal-based approach, we don't need a separate page
-        $currentUser = Auth::user();
+        $currentUser = auth('admin')->user() ?? Auth::user();
         $redirectRoute = $currentUser->hasRole('admin') ? 'admin.users.index' : 'employee.users.index';
         return redirect()->route($redirectRoute);
     }
@@ -159,7 +159,7 @@ class UserController extends Controller
         $this->authorize('update', $user);
         
         // For modal-based approach, we don't need a separate page
-        $currentUser = Auth::user();
+        $currentUser = auth('admin')->user() ?? Auth::user();
         $redirectRoute = $currentUser->hasRole('admin') ? 'admin.users.index' : 'employee.users.index';
         return redirect()->route($redirectRoute);
     }
@@ -171,7 +171,7 @@ class UserController extends Controller
     {
         $this->authorize('update', $user);
         
-        $currentUser = Auth::user();
+        $currentUser = auth('admin')->user() ?? Auth::user();
         
         $validated = $request->validate([
             'name' => 'required|string|max:255',
@@ -219,7 +219,7 @@ class UserController extends Controller
         
         $user->delete();
         
-        $currentUser = Auth::user();
+        $currentUser = auth('admin')->user() ?? Auth::user();
         $redirectRoute = $currentUser->hasRole('admin') ? 'admin.users.index' : 'employee.users.index';
         return redirect()->route($redirectRoute)
             ->with('success', 'User deleted successfully.');

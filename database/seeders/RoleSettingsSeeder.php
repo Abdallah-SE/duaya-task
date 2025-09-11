@@ -13,7 +13,7 @@ class RoleSettingsSeeder extends Seeder
      */
     public function run(): void
     {
-        // Get all existing roles
+        // Get all existing roles (both admin and web guards)
         $roles = Role::all();
         
         foreach ($roles as $role) {
@@ -28,12 +28,12 @@ class RoleSettingsSeeder extends Seeder
     }
     
     /**
-     * Get default monitoring status based on role name
+     * Get default monitoring status based on role name and guard
      */
     private function getDefaultMonitoringStatus(string $roleName): bool
     {
         return match ($roleName) {
-            'admin' => false, // Admins typically don't need idle monitoring
+            'admin' => true, // Enable monitoring for admins to test the system
             'employee' => true, // Employees need idle monitoring
             'manager' => true, // Managers need idle monitoring
             'supervisor' => true, // Supervisors need idle monitoring

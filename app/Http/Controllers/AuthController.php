@@ -16,16 +16,6 @@ class AuthController extends Controller
      */
     public function showLogin()
     {
-        // If user is already authenticated, redirect to appropriate dashboard
-        if (Auth::check()) {
-            $user = Auth::user();
-            if ($user->hasRole('admin')) {
-                return redirect('/admin/dashboard');
-            } else {
-                return redirect('/employee/dashboard');
-            }
-        }
-        
         return Inertia::render('Auth/Login');
     }
     
@@ -34,16 +24,6 @@ class AuthController extends Controller
      */
     public function showAdminLogin()
     {
-        // If user is already authenticated, redirect to appropriate dashboard
-        if (Auth::check()) {
-            $user = Auth::user();
-            if ($user->hasRole('admin')) {
-                return redirect('/admin/dashboard');
-            } else {
-                return redirect('/employee/dashboard');
-            }
-        }
-        
         return Inertia::render('Auth/AdminLogin');
     }
     
@@ -52,16 +32,6 @@ class AuthController extends Controller
      */
     public function showEmployeeLogin()
     {
-        // If user is already authenticated, redirect to appropriate dashboard
-        if (Auth::check()) {
-            $user = Auth::user();
-            if ($user->hasRole('admin')) {
-                return redirect('/admin/dashboard');
-            } else {
-                return redirect('/employee/dashboard');
-            }
-        }
-        
         return Inertia::render('Auth/EmployeeLogin');
     }
     

@@ -10,6 +10,9 @@ use App\Http\Controllers\AuthController;
 use App\Http\Controllers\IdleMonitoringController;
 use App\Http\Controllers\UserController;
 use App\Http\Controllers\EmployeeController;
+use App\Http\Controllers\AdminSettingsController;
+use Illuminate\Support\Facades\Auth;
+use Inertia\Inertia;
 
 // Authentication routes (guest only)
 Route::middleware('guest')->group(function () {
@@ -25,47 +28,62 @@ Route::middleware('guest')->group(function () {
 
 Route::post('/logout', [AuthController::class, 'logout'])->name('logout');
 
-// Protected routes
+// Admin Dashboard (web guard required)
+Route::prefix('admin')->middleware(['auth', 'role:admin', 'log.activity'])->group(function () {
+    Route::get('/dashboard', [AdminDashboardController::class, 'index'])->name('admin.dashboard');
+    
+    // User Management Routes
+    Route::resource('users', UserController::class)->names('admin.users');
+    
+    // Employee Management Routes
+    Route::resource('employees', EmployeeController::class)->names('admin.employees');
+    
+    // Admin Settings Routes
+    Route::get('/settings', [AdminSettingsController::class, 'index'])->name('admin.settings');
+    Route::put('/settings/global', [AdminSettingsController::class, 'updateGlobalSettings'])->name('admin.settings.global');
+    Route::put('/settings/roles', [AdminSettingsController::class, 'updateRoleSettings'])->name('admin.settings.roles');
+    Route::patch('/settings/roles/toggle', [AdminSettingsController::class, 'toggleRoleMonitoring'])->name('admin.settings.roles.toggle');
+    Route::post('/settings/reset', [AdminSettingsController::class, 'resetToDefaults'])->name('admin.settings.reset');
+    Route::get('/settings/api', [AdminSettingsController::class, 'getSettings'])->name('admin.settings.api');
+});
+
+// Employee Dashboard (web guard required)
+Route::prefix('employee')->middleware(['auth', 'role:employee', 'log.activity'])->group(function () {
+    Route::get('/dashboard', [EmployeeDashboardController::class, 'index'])->name('employee.dashboard');
+    
+    // Employee User Management Routes (employees can manage other employees)
+    Route::resource('users', UserController::class)->names('employee.users');
+    
+    // Employee Management Routes
+    Route::resource('employees', EmployeeController::class)->names('employee.employees');
+});
+
+// General routes (both admin and web guards)
 Route::middleware(['auth', 'log.activity'])->group(function () {
     // General Dashboard (fallback)
     Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
     Route::get('/', [DashboardController::class, 'index'])->name('home');
-    
-    // Admin Dashboard
-    Route::prefix('admin')->middleware('role:admin')->group(function () {
-        Route::get('/dashboard', [AdminDashboardController::class, 'index'])->name('admin.dashboard');
-        
-        // User Management Routes
-        Route::resource('users', UserController::class)->names('admin.users');
-        
-        // Employee Management Routes
-        Route::resource('employees', EmployeeController::class)->names('admin.employees');
-    });
-    
-    // Employee Dashboard
-    Route::prefix('employee')->middleware('role:employee')->group(function () {
-        Route::get('/dashboard', [EmployeeDashboardController::class, 'index'])->name('employee.dashboard');
-        
-        // Employee User Management Routes (employees can manage other employees)
-        Route::resource('users', UserController::class)->names('employee.users');
-        
-        // Employee Management Routes
-        Route::resource('employees', EmployeeController::class)->names('employee.employees');
-    });
     
     // Activities
     Route::get('/activities', [ActivityController::class, 'index'])->name('activities.index');
     Route::get('/activities/user/{user}', [ActivityController::class, 'getUserActivities'])->name('activities.user');
     Route::post('/activities/penalty', [ActivityController::class, 'applyPenalty'])->name('activities.penalty');
     
-    // Settings
+    // Settings (both admin and web guards)
     Route::get('/settings', [SettingsController::class, 'index'])->name('settings.index');
     Route::put('/settings', [SettingsController::class, 'update'])->name('settings.update');
-    Route::post('/settings/global', [SettingsController::class, 'updateGlobalSettings'])->name('settings.global');
+    Route::get('/settings/api', [SettingsController::class, 'getSettings'])->name('settings.api');
+    
+    // Role settings management (admin only)
+    Route::put('/settings/roles', [SettingsController::class, 'updateRoleSettings'])->name('settings.roles');
+    Route::patch('/settings/roles/toggle', [SettingsController::class, 'toggleRoleMonitoring'])->name('settings.roles.toggle');
+    
+    // User monitoring status check
+    Route::get('/monitoring-status', [SettingsController::class, 'getUserMonitoringStatus'])->name('monitoring.status');
 });
 
-// API routes for idle monitoring
-Route::prefix('api/idle-monitoring')->middleware(['auth', 'log.activity', 'web'])->group(function () {
+// API routes for idle monitoring (both admin and web guards)
+Route::prefix('api/idle-monitoring')->middleware(['auth', 'log.activity'])->group(function () {
     Route::post('/start-session', [IdleMonitoringController::class, 'startIdleSession']);
     Route::post('/end-session', [IdleMonitoringController::class, 'endIdleSession']);
     Route::post('/handle-warning', [IdleMonitoringController::class, 'handleIdleWarning']);

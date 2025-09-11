@@ -22,7 +22,7 @@ class EmployeeController extends Controller
     {
         $this->authorize('viewAny', Employee::class);
         
-        $currentUser = Auth::user();
+        $currentUser = auth('admin')->user() ?? Auth::user();
         
         // Build query for employees with their user data
         $query = Employee::with(['user.roles', 'user.penalties', 'user.activityLogs', 'user.idleSessions']);
@@ -120,7 +120,7 @@ class EmployeeController extends Controller
         $this->authorize('create', Employee::class);
         
         // For modal-based approach, we don't need a separate page
-        $currentUser = Auth::user();
+        $currentUser = auth('admin')->user() ?? Auth::user();
         $redirectRoute = $currentUser->hasRole('admin') ? 'admin.employees.index' : 'employee.employees.index';
         return redirect()->route($redirectRoute);
     }
@@ -132,7 +132,7 @@ class EmployeeController extends Controller
     {
         $this->authorize('create', Employee::class);
         
-        $currentUser = Auth::user();
+        $currentUser = auth('admin')->user() ?? Auth::user();
         
         $validated = $request->validate([
             'user_id' => 'required|exists:users,id',
@@ -181,7 +181,7 @@ class EmployeeController extends Controller
         $this->authorize('view', $employee);
         
         // For modal-based approach, we don't need a separate page
-        $currentUser = Auth::user();
+        $currentUser = auth('admin')->user() ?? Auth::user();
         $redirectRoute = $currentUser->hasRole('admin') ? 'admin.employees.index' : 'employee.employees.index';
         return redirect()->route($redirectRoute);
     }
@@ -194,7 +194,7 @@ class EmployeeController extends Controller
         $this->authorize('update', $employee);
         
         // For modal-based approach, we don't need a separate page
-        $currentUser = Auth::user();
+        $currentUser = auth('admin')->user() ?? Auth::user();
         $redirectRoute = $currentUser->hasRole('admin') ? 'admin.employees.index' : 'employee.employees.index';
         return redirect()->route($redirectRoute);
     }
@@ -206,7 +206,7 @@ class EmployeeController extends Controller
     {
         $this->authorize('update', $employee);
         
-        $currentUser = Auth::user();
+        $currentUser = auth('admin')->user() ?? Auth::user();
         
         $validated = $request->validate([
             'job_title' => 'required|string|max:255',
@@ -258,7 +258,7 @@ class EmployeeController extends Controller
         // Delete only the employee record, keep the user
         $employee->delete();
         
-        $currentUser = Auth::user();
+        $currentUser = auth('admin')->user() ?? Auth::user();
         $redirectRoute = $currentUser->hasRole('admin') ? 'admin.employees.index' : 'employee.employees.index';
         return redirect()->route($redirectRoute)
             ->with('success', 'Employee deleted successfully.');
