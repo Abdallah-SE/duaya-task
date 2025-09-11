@@ -1,5 +1,11 @@
 <template>
-    <AppLayout :user="user" :user-settings="userSettings">
+    <AppLayout 
+        :user="user" 
+        :user-settings="userSettings"
+        :initial-settings="initialSettings"
+        :can-control-idle-monitoring="canControlIdleMonitoring"
+        :is-idle-monitoring-enabled="isIdleMonitoringEnabled"
+    >
         <div class="space-y-6">
             <!-- Header with Greeting -->
             <div class="md:flex md:items-center md:justify-between">
@@ -178,6 +184,9 @@ import AppLayout from '@/Layouts/AppLayout.vue'
 const props = defineProps({
     user: Object,
     userSettings: Object,
+    initialSettings: Object,
+    canControlIdleMonitoring: Boolean,
+    isIdleMonitoringEnabled: Boolean,
     stats: Object,
     myActivities: Array,
     myPenalties: Array,

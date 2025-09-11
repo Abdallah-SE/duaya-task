@@ -25,6 +25,11 @@ class EmployeeDashboardController extends Controller
         // Load employee relationship
         $user->load('employee');
         
+        // Debug: Log what we're sending to frontend
+        \Log::info('🔍 EmployeeDashboardController called for user: ' . $user->id);
+        $isIdleMonitoringEnabled = $user->isIdleMonitoringEnabled();
+        \Log::info('🔍 EmployeeDashboardController - isIdleMonitoringEnabled: ' . ($isIdleMonitoringEnabled ? 'true' : 'false'));
+        
         // Get limited statistics for employee
         $stats = [
             'myActivities' => ActivityLog::where('user_id', $user->id)->count(),
@@ -60,15 +65,26 @@ class EmployeeDashboardController extends Controller
             ->limit(5)
             ->get();
         
-        return Inertia::render('Employee/Dashboard', [
+        $data = [
             'user' => $user,
             'userSettings' => $userSettings,
+            'initialSettings' => $userSettings, // Add this for IdleMonitor component
+            'canControlIdleMonitoring' => $user->canControlIdleMonitoring(),
+            'isIdleMonitoringEnabled' => $isIdleMonitoringEnabled,
             'stats' => $stats,
             'myActivities' => $myActivities,
             'myPenalties' => $myPenalties,
             'myIdleSessions' => $myIdleSessions,
             'greeting' => $this->getGreeting($user),
+        ];
+        
+        \Log::info('🔍 Inertia data being sent:', [
+            'isIdleMonitoringEnabled' => $data['isIdleMonitoringEnabled'],
+            'canControlIdleMonitoring' => $data['canControlIdleMonitoring'],
+            'initialSettings' => $data['initialSettings']->toArray(),
         ]);
+        
+        return Inertia::render('Employee/Dashboard', $data);
     }
     
     private function getGreeting($user)

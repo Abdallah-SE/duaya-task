@@ -6,6 +6,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
+use Illuminate\Support\Facades\Log;
 use Laravel\Sanctum\HasApiTokens;
 use Spatie\Permission\Traits\HasRoles;
 
@@ -69,11 +70,11 @@ class User extends Authenticatable
     }
 
     /**
-     * Get or create user idle settings.
+     * Get default idle settings.
      */
     public function getIdleSettings()
     {
-        return $this->idleSettings ?? \App\Models\IdleSetting::getForUser($this->id);
+        return \App\Models\IdleSetting::getDefault();
     }
 
     /**
@@ -113,13 +114,19 @@ class User extends Authenticatable
      */
     public function isIdleMonitoringEnabled(): bool
     {
+        // Simple direct database check - no caching, no complexity
         $userRoles = $this->getRoleNames();
-        
-        // Check if any of the user's roles have idle monitoring enabled
+        Log::info('userRoles' );
+        Log::info($userRoles );
         foreach ($userRoles as $roleName) {
-            $roleSetting = \App\Models\RoleSetting::getForRoleName($roleName);
-            if ($roleSetting->isIdleMonitoringEnabled()) {
-                return true;
+            $role = \Spatie\Permission\Models\Role::where('name', $roleName)->first();
+            if ($role) {
+                $setting = \App\Models\RoleSetting::where('role_id', $role->id)->first();
+                if ($setting && $setting->idle_monitoring_enabled) {
+                    Log::info('true' );
+                    Log::info(true );
+                    return true;
+                }
             }
         }
         

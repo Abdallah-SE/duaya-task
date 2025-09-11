@@ -13,27 +13,20 @@ return new class extends Migration
     {
         Schema::create('idle_settings', function (Blueprint $table) {
             $table->id();
-            $table->foreignId('user_id')->constrained()->onDelete('cascade');
-            
+             
             // Simple settings for idle monitoring (as per task requirements)
             $table->unsignedTinyInteger('idle_timeout')->default(5); // Timeout in seconds (default 5s as per task)
-            $table->boolean('idle_monitoring_enabled')->default(true);
-            $table->unsignedTinyInteger('max_idle_warnings')->default(2); // Max warnings before logout (default 2)
+             $table->unsignedTinyInteger('max_idle_warnings')->default(2); // Max warnings before logout (default 2)
             
             $table->timestamps();
             
             // Ensure one settings record per user
-            $table->unique('user_id');
-            
+             
             // Performance indexes
-            $table->index('idle_monitoring_enabled');
-            $table->index('idle_timeout');
+             $table->index('idle_timeout');
         });
 
-        // Add idle monitoring control to roles table
-        Schema::table('roles', function (Blueprint $table) {
-            $table->boolean('idle_monitoring_enabled')->default(true)->after('guard_name');
-        });
+      
     }
 
     /**
@@ -41,10 +34,7 @@ return new class extends Migration
      */
     public function down(): void
     {
-        // Remove idle monitoring column from roles table
-        Schema::table('roles', function (Blueprint $table) {
-            $table->dropColumn('idle_monitoring_enabled');
-        });
+         
         
         Schema::dropIfExists('idle_settings');
     }

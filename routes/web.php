@@ -48,13 +48,14 @@ Route::middleware(['auth', 'log.activity'])->group(function () {
 });
 
 // API routes for idle monitoring
-Route::prefix('api/idle-monitoring')->middleware(['auth', 'log.activity'])->group(function () {
+Route::prefix('api/idle-monitoring')->middleware(['auth', 'log.activity', 'web'])->group(function () {
     Route::post('/start-session', [IdleMonitoringController::class, 'startIdleSession']);
     Route::post('/end-session', [IdleMonitoringController::class, 'endIdleSession']);
     Route::post('/handle-warning', [IdleMonitoringController::class, 'handleIdleWarning']);
     Route::get('/settings', [IdleMonitoringController::class, 'getSettings']);
     Route::post('/update-settings', [IdleMonitoringController::class, 'updateSettings']);
     Route::get('/test-db', [IdleMonitoringController::class, 'testDatabase']);
+    Route::get('/stats', [IdleMonitoringController::class, 'getIdleStats']);
     
     // Role-based idle monitoring management (Admin only)
     Route::middleware('role:admin')->group(function () {
@@ -62,3 +63,31 @@ Route::prefix('api/idle-monitoring')->middleware(['auth', 'log.activity'])->grou
         Route::post('/role-settings', [IdleMonitoringController::class, 'updateRoleSettings']);
     });
 });
+
+Route::get('/debug-idle', function () {
+    $user = Auth::user();
+    if (!$user) {
+        return response()->json(['error' => 'Not authenticated']);
+    }
+    
+    $userSettings = $user->getIdleSettings();
+    $isIdleMonitoringEnabled = $user->isIdleMonitoringEnabled();
+    
+    // Check IdleSession table
+    $idleSessions = \App\Models\IdleSession::where('user_id', $user->id)->get();
+    $totalIdleSessions = \App\Models\IdleSession::count();
+    
+    return response()->json([
+        'user_id' => $user->id,
+        'user_roles' => $user->getRoleNames()->toArray(),
+        'isIdleMonitoringEnabled' => $isIdleMonitoringEnabled,
+        'role_setting_check' => \App\Models\RoleSetting::isIdleMonitoringEnabledForRole('employee'),
+        'userSettings' => $userSettings->toArray(),
+        'idle_sessions_for_user' => $idleSessions->toArray(),
+        'total_idle_sessions' => $totalIdleSessions,
+        'timestamp' => now()->toDateTimeString(),
+    ]);
+});
+
+// Web route for idle monitoring (better CSRF handling)
+Route::post('/idle-monitoring/handle-warning', [IdleMonitoringController::class, 'handleIdleWarning'])->middleware(['auth', 'log.activity']);

@@ -5,6 +5,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Support\Facades\Log;
 
 class IdleSession extends Model
 {
@@ -90,10 +91,28 @@ class IdleSession extends Model
      */
     public static function startSession(int $userId): self
     {
-        return static::create([
-            'user_id' => $userId,
-            'idle_started_at' => now(),
-        ]);
+        try {
+            $session = static::create([
+                'user_id' => $userId,
+                'idle_started_at' => now(),
+            ]);
+            
+            Log::info('IdleSession::startSession - Session created successfully', [
+                'session_id' => $session->id,
+                'user_id' => $userId,
+                'idle_started_at' => $session->idle_started_at,
+                'created_at' => $session->created_at
+            ]);
+            
+            return $session;
+        } catch (\Exception $e) {
+            Log::error('IdleSession::startSession - Failed to create session', [
+                'user_id' => $userId,
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
+            throw $e;
+        }
     }
 
     /**

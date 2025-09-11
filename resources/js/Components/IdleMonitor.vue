@@ -1,4 +1,15 @@
 <template>
+    <!-- Debug Info (always visible) -->
+    <div style="position: fixed; top: 10px; left: 10px; z-index: 10000; background: rgba(0,0,0,0.8); color: white; padding: 10px; border-radius: 5px; font-size: 12px; max-width: 300px;">
+        <div><strong>IdleMonitor Debug:</strong></div>
+        <div>isIdleMonitoringEnabled: {{ isIdleMonitoringEnabled }}</div>
+        <div>idle_timeout: {{ initialSettings?.idle_timeout }}</div>
+        <div>max_warnings: {{ initialSettings?.max_idle_warnings }}</div>
+        <div>Cache buster: {{ props.cache_buster || 'N/A' }}</div>
+        <div>Refresh token: {{ props.refresh_token || 'N/A' }}</div>
+        <div>Last updated: {{ new Date().toLocaleTimeString() }}</div>
+    </div>
+
     <!-- Test Buttons (for debugging) -->
     <div style="position: fixed; top: 10px; right: 10px; z-index: 10000; display: flex; gap: 5px;">
         <button 
@@ -12,6 +23,12 @@
             style="background: #28a745; color: white; border: none; padding: 8px 16px; border-radius: 4px; cursor: pointer; font-size: 12px;"
         >
             Test DB
+        </button>
+        <button 
+            @click="forceRefresh"
+            style="background: #007bff; color: white; border: none; padding: 8px 16px; border-radius: 4px; cursor: pointer; font-size: 12px;"
+        >
+            Force Refresh
         </button>
     </div>
 
@@ -66,6 +83,14 @@ const props = defineProps({
     isIdleMonitoringEnabled: {
         type: Boolean,
         default: true
+    },
+    cache_buster: {
+        type: String,
+        default: null
+    },
+    refresh_token: {
+        type: String,
+        default: null
     }
 })
 
@@ -86,23 +111,36 @@ let currentSessionId = null
 
 // Initialize the idle monitor
 onMounted(() => {
-    console.log('IdleMonitor mounted with props:', props)
-    console.log('Initial settings:', props.initialSettings)
+    console.log('=== IDLE MONITOR DEBUG ===')
+    console.log('🔍 ALL PROPS RECEIVED:', props)
+    console.log('🔍 isIdleMonitoringEnabled prop:', props.isIdleMonitoringEnabled)
+    console.log('🔍 typeof isIdleMonitoringEnabled:', typeof props.isIdleMonitoringEnabled)
+    console.log('🔍 initialSettings:', props.initialSettings)
+    console.log('🔍 canControlIdleMonitoring:', props.canControlIdleMonitoring)
+    console.log('🔍 cache_buster:', props.cache_buster)
     
-    if (props.initialSettings && props.initialSettings.idle_monitoring_enabled) {
+    // Check if monitoring is enabled (role setting only)
+    const isMonitoringEnabled = props.isIdleMonitoringEnabled
+    
+    console.log('🔍 Final isMonitoringEnabled:', isMonitoringEnabled)
+    console.log('🔍 Boolean conversion:', Boolean(props.isIdleMonitoringEnabled))
+    
+    if (isMonitoringEnabled) {
         idleTimeout.value = props.initialSettings.idle_timeout * 1000
         maxWarnings.value = props.initialSettings.max_idle_warnings
-        console.log('Starting idle monitoring with timeout:', idleTimeout.value, 'ms')
+        console.log('✅ Starting idle monitoring with timeout:', idleTimeout.value, 'ms')
         startIdleMonitoring()
         startCsrfRefresh()
     } else {
-        console.log('Idle monitoring disabled or no settings provided')
+        console.log('❌ Idle monitoring disabled - Role or settings disabled')
         console.log('Settings check:', {
             hasSettings: !!props.initialSettings,
-            monitoringEnabled: props.initialSettings?.idle_monitoring_enabled,
+            roleMonitoringEnabled: props.isIdleMonitoringEnabled,
+            userSettingEnabled: props.initialSettings?.idle_monitoring_enabled,
             timeout: props.initialSettings?.idle_timeout
         })
     }
+    console.log('=== END IDLE MONITOR DEBUG ===')
 })
 
 onUnmounted(() => {
@@ -112,7 +150,8 @@ onUnmounted(() => {
 
 // Start idle monitoring
 const startIdleMonitoring = () => {
-    console.log('Starting idle monitoring...')
+    console.log('🚀 Starting idle monitoring...')
+    console.log('Current timeout:', idleTimeout.value, 'ms')
     
     // Add event listeners for user activity
     document.addEventListener('mousemove', resetIdleTimer)
@@ -121,10 +160,11 @@ const startIdleMonitoring = () => {
     document.addEventListener('click', resetIdleTimer)
     document.addEventListener('touchstart', resetIdleTimer)
     
-    console.log('Event listeners added, starting initial timer...')
+    console.log('✅ Event listeners added, starting initial timer...')
     
     // Start the initial timer
     resetIdleTimer()
+    console.log('✅ Initial timer started')
 }
 
 // Stop idle monitoring
@@ -185,29 +225,43 @@ const startCountdown = () => {
 // Handle idle warning API call
 const handleIdleWarningAPI = async () => {
     try {
+        console.log('🔍 Making API call with warning count:', warningCount.value)
+        
+        // Get CSRF token from meta tag
         const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content')
-        const response = await axios.post('/api/idle-monitoring/handle-warning', {
-            warning_count: warningCount.value
-        }, {
+        console.log('🔍 CSRF Token:', csrfToken ? 'Found' : 'Not found')
+        
+        // Use web route for better CSRF handling
+        const response = await fetch('/idle-monitoring/handle-warning', {
+            method: 'POST',
             headers: {
-                'X-CSRF-TOKEN': csrfToken,
-                'X-Requested-With': 'XMLHttpRequest',
                 'Content-Type': 'application/json',
-                'Accept': 'application/json'
-            }
+                'Accept': 'application/json',
+                'X-CSRF-TOKEN': csrfToken,
+                'X-Requested-With': 'XMLHttpRequest'
+            },
+            credentials: 'same-origin',
+            body: JSON.stringify({
+                warning_count: warningCount.value
+            })
         })
         
-        console.log('Handle warning API response:', response.data)
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`)
+        }
+        
+        const data = await response.json()
+        console.log('✅ API call successful:', data)
         
         // Store session ID for later use
-        if (response.data.session_id) {
-            currentSessionId = response.data.session_id
+        if (data.session_id) {
+            currentSessionId = data.session_id
         }
         
         // Only logout if this is the third warning and logout is required
-        if (warningCount.value >= 3 && response.data.logout_required) {
+        if (warningCount.value >= 3 && data.logout_required) {
             console.log('Third warning reached - logout required, redirecting...')
-            console.log('Penalty created:', response.data.penalty_id)
+            console.log('Penalty created:', data.penalty_id)
             window.location.href = '/login?message=inactivity_logout'
         }
         
@@ -428,6 +482,20 @@ const testDatabase = async () => {
         console.error('Database test failed:', error)
         alert('Database test failed! Check console for details.')
     }
+}
+
+// Force refresh function
+const forceRefresh = () => {
+    console.log('🔄 Force refreshing page...')
+    // Clear all caches and reload
+    if ('caches' in window) {
+        caches.keys().then(names => {
+            names.forEach(name => {
+                caches.delete(name)
+            })
+        })
+    }
+    window.location.reload(true)
 }
 
 // Helper function to get CSRF token from cookie

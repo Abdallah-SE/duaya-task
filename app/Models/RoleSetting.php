@@ -4,26 +4,17 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
-use Spatie\Permission\Models\Role; // Use standard Spatie Role
+use Spatie\Permission\Models\Role;
 
 class RoleSetting extends Model
 {
-    /**
-     * The table associated with the model.
-     */
     protected $table = 'role_settings';
 
-    /**
-     * The attributes that are mass assignable.
-     */
     protected $fillable = [
         'role_id',
         'idle_monitoring_enabled',
     ];
 
-    /**
-     * The attributes that should be cast.
-     */
     protected function casts(): array
     {
         return [
@@ -38,54 +29,62 @@ class RoleSetting extends Model
      */
     public function role(): BelongsTo
     {
-        return $this->belongsTo(Role::class); // Use standard Role
+        return $this->belongsTo(Role::class);
     }
 
     /**
-     * Get or create role settings for a specific role.
+     * Get idle monitoring status for a role (simple direct check).
      */
-    public static function getForRole(int $roleId): self
+    public static function isIdleMonitoringEnabledForRole(string $roleName): bool
     {
-        return static::firstOrCreate(
-            ['role_id' => $roleId],
-            ['idle_monitoring_enabled' => true]
+        $role = Role::where('name', $roleName)->first();
+        if (!$role) return false;
+        
+        $setting = static::where('role_id', $role->id)->first();
+        return $setting ? $setting->idle_monitoring_enabled : true; // Default to true
+    }
+
+    /**
+     * Update role setting and clear cache immediately.
+     */
+    public static function updateSetting(string $roleName, bool $enabled): bool
+    {
+        $role = Role::where('name', $roleName)->first();
+        if (!$role) return false;
+
+        $setting = static::updateOrCreate(
+            ['role_id' => $role->id],
+            ['idle_monitoring_enabled' => $enabled]
         );
+
+        // Clear cache immediately for instant effect
+        cache()->forget("role_idle_monitoring_{$roleName}");
+        
+        return true; // Return success status, not the value
     }
 
     /**
-     * Get or create role settings by role name.
+     * Get all role settings efficiently (for admin dashboard).
      */
-    public static function getForRoleName(string $roleName): self
+    public static function getAllSettings()
     {
-        $role = Role::where('name', $roleName)->firstOrFail(); // Use standard Role
-        return static::getForRole($role->id);
+        return static::with('role:id,name')
+            ->select('role_id', 'idle_monitoring_enabled')
+            ->get()
+            ->mapWithKeys(function ($setting) {
+                return [$setting->role->name => $setting->idle_monitoring_enabled];
+            });
     }
 
     /**
-     * Update role settings.
+     * Clear all role setting caches.
      */
-    public static function updateForRole(
-        int $roleId,
-        ?bool $monitoringEnabled = null
-    ): self {
-        $settings = static::getForRole($roleId);
-        
-        $settings->update(array_filter([
-            'idle_monitoring_enabled' => $monitoringEnabled,
-        ], fn($value) => $value !== null));
-        
-        return $settings;
-    }
-
-    /**
-     * Update role settings by role name.
-     */
-    public static function updateForRoleName(
-        string $roleName,
-        ?bool $monitoringEnabled = null
-    ): self {
-        $role = Role::where('name', $roleName)->firstOrFail(); // Use standard Role
-        return static::updateForRole($role->id, $monitoringEnabled);
+    public static function clearAllCaches()
+    {
+        $roles = Role::pluck('name');
+        foreach ($roles as $roleName) {
+            cache()->forget("role_idle_monitoring_{$roleName}");
+        }
     }
 
     /**
@@ -96,4 +95,3 @@ class RoleSetting extends Model
         return $this->idle_monitoring_enabled;
     }
 }
-

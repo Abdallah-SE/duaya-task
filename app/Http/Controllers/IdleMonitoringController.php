@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Log;
 use App\Models\IdleSession;
 use App\Models\Penalty;
 use App\Models\IdleSetting;
@@ -97,14 +98,14 @@ class IdleMonitoringController extends Controller
     {
         $user = Auth::user();
         
-        \Log::info('Handle idle warning called', [
+        Log::info('Handle idle warning called', [
             'user_id' => $user->id,
             'warning_count' => $request->input('warning_count', 1)
         ]);
         
         // Check if monitoring is enabled for this user's role
         if (!$user->isIdleMonitoringEnabled()) {
-            \Log::info('Idle monitoring disabled for user role', ['user_id' => $user->id]);
+            Log::info('Idle monitoring disabled for user role', ['user_id' => $user->id]);
             return response()->json([
                 'success' => false,
                 'message' => 'Idle monitoring is disabled for your role',
@@ -114,15 +115,68 @@ class IdleMonitoringController extends Controller
         
         $warningCount = $request->input('warning_count', 1);
         
-        // Create idle session for ALL warnings (1st, 2nd, 3rd)
-        $idleSession = IdleSession::startSession($user->id);
-        \Log::info('Idle session created for warning', [
-            'user_id' => $user->id,
-            'warning_count' => $warningCount,
-            'session_id' => $idleSession->id
-        ]);
-        
+        // Get idle settings from idle_settings table
         $idleSettings = $user->getIdleSettings();
+        
+        // For the first warning, create an idle session
+        if ($warningCount === 1) {
+            // End any existing active session first
+            IdleSession::where('user_id', $user->id)
+                ->whereNull('idle_ended_at')
+                ->update(['idle_ended_at' => now()]);
+            
+            // Create new idle session for this idle period
+            $idleSession = IdleSession::startSession($user->id);
+            Log::info('Idle session created for first warning', [
+                'user_id' => $user->id,
+                'session_id' => $idleSession->id,
+                'idle_timeout' => $idleSettings->idle_timeout,
+                'max_warnings' => $idleSettings->max_idle_warnings,
+                'session_data' => $idleSession->toArray()
+            ]);
+            
+            // Verify the session was actually saved to database
+            $savedSession = IdleSession::find($idleSession->id);
+            if ($savedSession) {
+                Log::info('Idle session verified in database', [
+                    'session_id' => $savedSession->id,
+                    'user_id' => $savedSession->user_id,
+                    'idle_started_at' => $savedSession->idle_started_at,
+                    'created_at' => $savedSession->created_at
+                ]);
+            } else {
+                Log::error('Idle session NOT found in database after creation!', [
+                    'expected_id' => $idleSession->id,
+                    'user_id' => $user->id
+                ]);
+            }
+            
+            // Fire event for idle session start
+            event(new UserActivityEvent(
+                user: $user,
+                action: 'idle_session_started',
+                subjectType: 'App\Models\IdleSession',
+                subjectId: $idleSession->id,
+                ipAddress: $request->ip(),
+                device: $this->getDeviceInfo($request),
+                browser: $this->getBrowserInfo($request)
+            ));
+        } else {
+            // For subsequent warnings, find the active session
+            $idleSession = IdleSession::where('user_id', $user->id)
+                ->whereNull('idle_ended_at')
+                ->latest()
+                ->first();
+            
+            if (!$idleSession) {
+                Log::warning('No active idle session found for warning', [
+                    'user_id' => $user->id,
+                    'warning_count' => $warningCount
+                ]);
+                // Create a new session if none exists
+                $idleSession = IdleSession::startSession($user->id);
+            }
+        }
         
         // Fire event for idle warning
         event(new IdleWarningEvent(
@@ -133,18 +187,21 @@ class IdleMonitoringController extends Controller
             timeoutSeconds: $idleSettings->idle_timeout
         ));
         
-        \Log::info('Idle warning event fired', [
+        Log::info('Idle warning event fired', [
             'user_id' => $user->id,
             'warning_count' => $warningCount,
             'max_warnings' => $idleSettings->max_idle_warnings,
-            'session_id' => $idleSession->id
+            'session_id' => $idleSession->id,
+            'idle_timeout' => $idleSettings->idle_timeout
         ]);
         
         // Check if this is the third warning (should trigger penalty)
-        if ($warningCount >= 3) {
-            \Log::info('Third warning reached, applying penalty', [
+        // According to task: 1st=Alert, 2nd=Warning, 3rd=Auto Logout + Penalty
+        if ($warningCount >= $idleSettings->max_idle_warnings) {
+            Log::info('Max warnings reached, applying penalty', [
                 'user_id' => $user->id,
                 'warning_count' => $warningCount,
+                'max_warnings' => $idleSettings->max_idle_warnings,
                 'session_id' => $idleSession->id
             ]);
             return $this->applyPenalty($user, $request, $idleSession->id);
@@ -154,9 +211,10 @@ class IdleMonitoringController extends Controller
             'success' => true,
             'message' => 'Idle warning recorded',
             'warning_count' => $warningCount,
-            'max_warnings' => 3,
+            'max_warnings' => $idleSettings->max_idle_warnings,
             'session_id' => $idleSession->id,
-            'next_action' => $warningCount + 1 >= 3 ? 'penalty' : 'warning'
+            'idle_timeout' => $idleSettings->idle_timeout,
+            'next_action' => $warningCount + 1 >= $idleSettings->max_idle_warnings ? 'penalty' : 'warning'
         ]);
     }
     
@@ -166,7 +224,7 @@ class IdleMonitoringController extends Controller
     private function applyPenalty($user, Request $request, $sessionId)
     {
         try {
-            \Log::info('Applying penalty for user: ' . $user->id . ', session: ' . $sessionId);
+            Log::info('Applying penalty for user: ' . $user->id . ', session: ' . $sessionId);
             
             // Create penalty
             $penalty = Penalty::createPenalty(
@@ -175,7 +233,7 @@ class IdleMonitoringController extends Controller
                 count: 1
             );
             
-            \Log::info('Penalty created with ID: ' . $penalty->id);
+            Log::info('Penalty created with ID: ' . $penalty->id);
             
             // End the idle session
             $idleSession = IdleSession::where('id', $sessionId)
@@ -184,9 +242,9 @@ class IdleMonitoringController extends Controller
             
             if ($idleSession) {
                 $idleSession->endSession();
-                \Log::info('Idle session ended: ' . $idleSession->id);
+                Log::info('Idle session ended: ' . $idleSession->id);
             } else {
-                \Log::warning('Idle session not found: ' . $sessionId);
+                Log::warning('Idle session not found: ' . $sessionId);
             }
             
             // Fire event for penalty applied
@@ -196,7 +254,7 @@ class IdleMonitoringController extends Controller
                 reason: 'Excessive idle time - auto logout triggered'
             ));
             
-            \Log::info('Logging out user: ' . $user->id);
+            Log::info('Logging out user: ' . $user->id);
             
             // Logout the user
             Auth::logout();
@@ -211,7 +269,7 @@ class IdleMonitoringController extends Controller
             ], 401);
             
         } catch (\Exception $e) {
-            \Log::error('Error applying penalty: ' . $e->getMessage(), [
+            Log::error('Error applying penalty: ' . $e->getMessage(), [
                 'user_id' => $user->id,
                 'session_id' => $sessionId,
                 'error' => $e->getMessage(),
@@ -241,7 +299,7 @@ class IdleMonitoringController extends Controller
         
         return response()->json([
             'idle_timeout' => $settings->idle_timeout,
-            'idle_monitoring_enabled' => $settings->idle_monitoring_enabled,
+            'idle_monitoring_enabled' => $user->isIdleMonitoringEnabled(), // Get from role settings
             'max_idle_warnings' => $settings->max_idle_warnings,
             'timeout_milliseconds' => $settings->getTimeoutInMilliseconds()
         ]);
@@ -308,17 +366,25 @@ class IdleMonitoringController extends Controller
             'idle_monitoring_enabled' => 'required|boolean'
         ]);
         
-        $roleSetting = \App\Models\RoleSetting::updateForRoleName(
+        $success = \App\Models\RoleSetting::updateSetting(
             $validated['role_name'],
             $validated['idle_monitoring_enabled']
         );
+        
+        if (!$success) {
+            return response()->json(['message' => 'Failed to update role settings'], 400);
+        }
+        
+        // Get the updated role setting for the response
+        $role = \Spatie\Permission\Models\Role::where('name', $validated['role_name'])->first();
+        $roleSetting = \App\Models\RoleSetting::where('role_id', $role->id)->first();
         
         // Fire event for settings update
         event(new UserActivityEvent(
             user: $user,
             action: 'update_role_idle_settings',
             subjectType: 'App\Models\RoleSetting',
-            subjectId: $roleSetting->id,
+            subjectId: $roleSetting ? $roleSetting->id : null,
             ipAddress: $request->ip(),
             device: $this->getDeviceInfo($request),
             browser: $this->getBrowserInfo($request)
@@ -328,7 +394,7 @@ class IdleMonitoringController extends Controller
             'message' => 'Role idle monitoring settings updated successfully',
             'role_setting' => [
                 'role_name' => $validated['role_name'],
-                'idle_monitoring_enabled' => $roleSetting->idle_monitoring_enabled
+                'idle_monitoring_enabled' => $validated['idle_monitoring_enabled']
             ]
         ]);
     }
@@ -345,13 +411,13 @@ class IdleMonitoringController extends Controller
             return response()->json(['message' => 'You do not have permission to view role settings'], 403);
         }
         
-        // Get all roles with their idle monitoring status from role_settings table
-        $roles = \App\Models\CustomRole::with('roleSetting')->get()->map(function ($role) {
+        // Get all roles with their idle monitoring status efficiently
+        $roles = \Spatie\Permission\Models\Role::all()->map(function ($role) {
             return [
                 'id' => $role->id,
                 'name' => $role->name,
                 'display_name' => ucfirst(str_replace('-', ' ', $role->name)),
-                'idle_monitoring_enabled' => $role->roleSetting?->idle_monitoring_enabled ?? true,
+                'idle_monitoring_enabled' => \App\Models\RoleSetting::isIdleMonitoringEnabledForRole($role->name),
                 'guard_name' => $role->guard_name,
             ];
         });
@@ -395,6 +461,43 @@ class IdleMonitoringController extends Controller
         } else {
             return 'Unknown';
         }
+    }
+
+    /**
+     * Get idle monitoring statistics.
+     */
+    public function getIdleStats(Request $request)
+    {
+        $user = Auth::user();
+        
+        // Only admin can view detailed stats
+        if (!$user->hasRole('admin')) {
+            return response()->json(['message' => 'Unauthorized'], 403);
+        }
+        
+        $stats = [
+            'total_sessions' => IdleSession::count(),
+            'active_sessions' => IdleSession::whereNull('idle_ended_at')->count(),
+            'completed_sessions' => IdleSession::whereNotNull('idle_ended_at')->count(),
+            'total_idle_time_seconds' => IdleSession::whereNotNull('duration_seconds')->sum('duration_seconds'),
+            'sessions_by_user' => IdleSession::with('user')
+                ->selectRaw('user_id, COUNT(*) as session_count, SUM(duration_seconds) as total_duration')
+                ->whereNotNull('idle_ended_at')
+                ->groupBy('user_id')
+                ->orderBy('session_count', 'desc')
+                ->limit(10)
+                ->get()
+                ->map(function ($item) {
+                    return [
+                        'user_id' => $item->user_id,
+                        'user_name' => $item->user->name ?? 'Unknown',
+                        'session_count' => $item->session_count,
+                        'total_duration_seconds' => $item->total_duration ?? 0,
+                    ];
+                }),
+        ];
+        
+        return response()->json($stats);
     }
 
     /**

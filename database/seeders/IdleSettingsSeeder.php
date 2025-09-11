@@ -13,14 +13,11 @@ class IdleSettingsSeeder extends Seeder
      */
     public function run(): void
     {
-        // Create default idle settings for each user
-        $users = User::all();
-        foreach ($users as $user) {
-            IdleSetting::getForUser($user->id);
-        }
+        // Create default idle settings (global settings)
+        IdleSetting::getDefault();
 
         // Create role settings for existing roles
-        $roles = \App\Models\CustomRole::all();
+        $roles = \Spatie\Permission\Models\Role::all();
         foreach ($roles as $role) {
             \App\Models\RoleSetting::create([
                 'role_id' => $role->id,

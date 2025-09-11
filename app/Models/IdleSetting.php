@@ -17,9 +17,7 @@ class IdleSetting extends Model
      * The attributes that are mass assignable.
      */
     protected $fillable = [
-        'user_id',
         'idle_timeout',
-        'idle_monitoring_enabled',
         'max_idle_warnings',
     ];
 
@@ -29,7 +27,6 @@ class IdleSetting extends Model
     protected function casts(): array
     {
         return [
-            'idle_monitoring_enabled' => 'boolean',
             'idle_timeout' => 'integer',
             'max_idle_warnings' => 'integer',
             'created_at' => 'datetime',
@@ -47,10 +44,14 @@ class IdleSetting extends Model
 
     /**
      * Scope to get settings for enabled monitoring.
+     * Note: idle_settings table doesn't have idle_monitoring_enabled field
+     * This is controlled by role_settings table instead
      */
     public function scopeEnabled(Builder $query): Builder
     {
-        return $query->where('idle_monitoring_enabled', true);
+        // Since idle_settings doesn't have idle_monitoring_enabled field,
+        // we return all settings as enabled (the actual control is in role_settings)
+        return $query;
     }
 
     /**
@@ -70,34 +71,34 @@ class IdleSetting extends Model
     }
 
     /**
-     * Get or create idle settings for a user.
+     * Get or create default idle settings.
      */
-    public static function getForUser(int $userId): self
+    public static function getDefault(): self
     {
-        return static::firstOrCreate(
-            ['user_id' => $userId],
-            [
+        // Get the first (and only) idle settings record
+        $setting = static::first();
+        
+        if (!$setting) {
+            $setting = static::create([
                 'idle_timeout' => 5,
-                'idle_monitoring_enabled' => true,
                 'max_idle_warnings' => 3,
-            ]
-        );
+            ]);
+        }
+        
+        return $setting;
     }
 
     /**
-     * Update idle settings for a user.
+     * Update default idle settings.
      */
-    public static function updateForUser(
-        int $userId,
+    public static function updateDefault(
         ?int $idleTimeout = null,
-        ?bool $monitoringEnabled = null,
         ?int $maxWarnings = null
     ): self {
-        $settings = static::getForUser($userId);
+        $settings = static::getDefault();
         
         $settings->update(array_filter([
             'idle_timeout' => $idleTimeout,
-            'idle_monitoring_enabled' => $monitoringEnabled,
             'max_idle_warnings' => $maxWarnings,
         ], fn($value) => $value !== null));
         
@@ -106,10 +107,14 @@ class IdleSetting extends Model
 
     /**
      * Check if monitoring is enabled for the user.
+     * Note: idle_settings table doesn't have idle_monitoring_enabled field
+     * This is controlled by role_settings table instead
      */
     public function isMonitoringEnabled(): bool
     {
-        return $this->idle_monitoring_enabled;
+        // Since idle_settings doesn't have idle_monitoring_enabled field,
+        // we return true (the actual control is in role_settings)
+        return true;
     }
 
     /**
