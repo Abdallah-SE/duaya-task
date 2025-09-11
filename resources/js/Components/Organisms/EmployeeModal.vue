@@ -10,6 +10,7 @@
       :errors="errors"
       :loading="loading"
       :is-create="isCreate"
+      :users="users"
       @submit="handleSubmit"
       @cancel="$emit('close')"
     />
@@ -41,6 +42,10 @@ const props = defineProps({
   isCreate: {
     type: Boolean,
     default: false
+  },
+  users: {
+    type: Array,
+    default: () => []
   }
 })
 

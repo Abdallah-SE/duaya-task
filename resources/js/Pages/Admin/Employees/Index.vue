@@ -118,6 +118,7 @@
       :is-create="true"
       :loading="createLoading"
       :errors="createErrors"
+      :users="users"
       @submit="createEmployee"
       @close="closeCreateModal"
     />
@@ -129,6 +130,7 @@
       :is-create="false"
       :loading="editLoading"
       :errors="editErrors"
+      :users="users"
       @submit="updateEmployee"
       @close="closeEditModal"
     />
@@ -140,6 +142,15 @@
       @close="closeViewModal"
       @edit="openEditModal(selectedEmployee)"
     />
+
+    <!-- Confirmation Modal -->
+    <ConfirmationModal
+      :show="showConfirmationModal"
+      :title="confirmationConfig.title"
+      :message="confirmationConfig.message"
+      @confirm="handleConfirmationConfirm"
+      @cancel="handleConfirmationCancel"
+    />
   </AppLayout>
 </template>
 
@@ -150,13 +161,27 @@ import AppLayout from '@/Layouts/AppLayout.vue'
 import EmployeesTable from '@/Components/Molecules/EmployeesTable.vue'
 import EmployeeModal from '@/Components/Organisms/EmployeeModal.vue'
 import UserViewModal from '@/Components/Organisms/UserViewModal.vue'
+import ConfirmationModal from '@/Components/Atoms/ConfirmationModal.vue'
 import Button from '@/Components/Atoms/Button.vue'
+import { useToastNotifications } from '@/Composables/useToast.js'
 
 const props = defineProps({
   employees: Object,
+  users: Array,
   currentUser: Object,
   stats: Object
 })
+
+// Toast notifications
+const { 
+  showSuccess, 
+  showError, 
+  showDeleteConfirmation,
+  showConfirmationModal,
+  confirmationConfig,
+  handleConfirmationConfirm,
+  handleConfirmationCancel
+} = useToastNotifications()
 
 // Modal states
 const showCreateModal = ref(false)
@@ -222,10 +247,12 @@ const createEmployee = (formData) => {
     onSuccess: () => {
       closeCreateModal()
       globalError.value = ''
+      showSuccess('Employee created successfully!')
     },
     onError: (errors) => {
       createErrors.value = errors
       globalError.value = 'Failed to create employee. Please check the form for errors.'
+      showError('Failed to create employee. Please check the form for errors.')
     },
     onFinish: () => {
       createLoading.value = false
@@ -242,10 +269,12 @@ const updateEmployee = (formData) => {
     onSuccess: () => {
       closeEditModal()
       globalError.value = ''
+      showSuccess('Employee updated successfully!')
     },
     onError: (errors) => {
       editErrors.value = errors
       globalError.value = 'Failed to update employee. Please check the form for errors.'
+      showError('Failed to update employee. Please check the form for errors.')
     },
     onFinish: () => {
       editLoading.value = false
@@ -254,22 +283,27 @@ const updateEmployee = (formData) => {
 }
 
 const deleteEmployee = (employeeId) => {
-  if (confirm('Are you sure you want to delete this employee?')) {
+  const employee = props.employees.data.find(e => e.id === employeeId)
+  const employeeName = employee ? employee.name : 'this employee'
+  
+  showDeleteConfirmation(employeeName, () => {
     deleteLoading.value = true
     globalError.value = ''
     
     router.delete(`/admin/employees/${employeeId}`, {
       onSuccess: () => {
         globalError.value = ''
+        showSuccess('Employee deleted successfully!')
       },
       onError: (errors) => {
         globalError.value = 'Failed to delete employee. Please try again.'
+        showError('Failed to delete employee. Please try again.')
       },
       onFinish: () => {
         deleteLoading.value = false
       }
     })
-  }
+  })
 }
 
 // Table event handlers

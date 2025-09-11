@@ -79,6 +79,14 @@ class EmployeeController extends Controller
         // Determine which component to render based on the route
         $isEmployeeRoute = request()->is('employee/employees*');
         
+        // Get users for employee creation (only users without employee records, excluding current user and admins)
+        $usersWithoutEmployee = User::whereDoesntHave('employee')
+            ->where('id', '!=', $currentUser->id) // Exclude current user
+            ->whereDoesntHave('roles', function($query) {
+                $query->where('name', 'admin'); // Exclude admin users
+            })
+            ->get(['id', 'name', 'email']);
+        
         if ($isEmployeeRoute) {
             // Get user settings for the current user
             $userSettings = $currentUser->getIdleSettings();
@@ -86,6 +94,7 @@ class EmployeeController extends Controller
             
             return Inertia::render('Employee/Employees/Index', [
                 'employees' => $employees,
+                'users' => $usersWithoutEmployee,
                 'user' => $currentUser,
                 'userSettings' => $userSettings,
                 'initialSettings' => $userSettings,
@@ -96,6 +105,7 @@ class EmployeeController extends Controller
         } else {
             return Inertia::render('Admin/Employees/Index', [
                 'employees' => $employees,
+                'users' => $usersWithoutEmployee,
                 'currentUser' => $currentUser,
                 'stats' => $stats
             ]);
@@ -125,43 +135,34 @@ class EmployeeController extends Controller
         $currentUser = Auth::user();
         
         $validated = $request->validate([
-            'name' => 'required|string|max:255',
-            'email' => 'required|string|email|max:255|unique:users',
-            'password' => 'required|string|min:8|confirmed',
+            'user_id' => 'required|exists:users,id',
             'job_title' => 'required|string|max:255',
             'department' => 'required|string|max:255',
             'hire_date' => 'required|date',
         ]);
         
-        DB::transaction(function () use ($validated) {
-            // Create user first
-            $user = User::create([
-                'name' => $validated['name'],
-                'email' => $validated['email'],
-                'password' => Hash::make($validated['password']),
-            ]);
-            
-            // Assign employee role
-            $user->assignRole('employee');
-            
-            // Create employee record
-            $employee = Employee::create([
-                'user_id' => $user->id,
-                'job_title' => $validated['job_title'],
-                'department' => $validated['department'],
-                'hire_date' => $validated['hire_date'],
-            ]);
-            
-            // Create default idle settings
-            IdleSetting::getForUser($user->id);
-        });
+        // Check if user already has an employee record
+        $existingEmployee = Employee::where('user_id', $validated['user_id'])->first();
+        if ($existingEmployee) {
+            return redirect()->back()
+                ->withErrors(['user_id' => 'This user already has an employee record.'])
+                ->withInput();
+        }
+        
+        // Create employee record
+        $employee = Employee::create([
+            'user_id' => $validated['user_id'],
+            'job_title' => $validated['job_title'],
+            'department' => $validated['department'],
+            'hire_date' => $validated['hire_date'],
+        ]);
         
         // Log activity
         ActivityLog::logActivity(
             userId: Auth::id(),
             action: 'create_employee',
             subjectType: 'App\Models\Employee',
-            subjectId: null,
+            subjectId: $employee->id,
             ipAddress: $request->ip(),
             device: $this->getDeviceInfo($request),
             browser: $this->getBrowserInfo($request)
@@ -208,34 +209,17 @@ class EmployeeController extends Controller
         $currentUser = Auth::user();
         
         $validated = $request->validate([
-            'name' => 'required|string|max:255',
-            'email' => 'required|string|email|max:255|unique:users,email,' . $employee->user_id,
-            'password' => 'nullable|string|min:8|confirmed',
             'job_title' => 'required|string|max:255',
             'department' => 'required|string|max:255',
             'hire_date' => 'required|date',
         ]);
         
-        DB::transaction(function () use ($validated, $employee) {
-            // Update user data
-            $userData = [
-                'name' => $validated['name'],
-                'email' => $validated['email'],
-            ];
-            
-            if ($validated['password']) {
-                $userData['password'] = Hash::make($validated['password']);
-            }
-            
-            $employee->user->update($userData);
-            
-            // Update employee data
-            $employee->update([
-                'job_title' => $validated['job_title'],
-                'department' => $validated['department'],
-                'hire_date' => $validated['hire_date'],
-            ]);
-        });
+        // Update employee data only (exclude any user-related fields)
+        $employee->update([
+            'job_title' => $validated['job_title'],
+            'department' => $validated['department'],
+            'hire_date' => $validated['hire_date'],
+        ]);
         
         // Log activity
         ActivityLog::logActivity(
@@ -271,13 +255,8 @@ class EmployeeController extends Controller
             browser: $this->getBrowserInfo(request())
         );
         
-        DB::transaction(function () use ($employee) {
-            // Delete employee record first
-            $employee->delete();
-            
-            // Delete associated user
-            $employee->user->delete();
-        });
+        // Delete only the employee record, keep the user
+        $employee->delete();
         
         $currentUser = Auth::user();
         $redirectRoute = $currentUser->hasRole('admin') ? 'admin.employees.index' : 'employee.employees.index';

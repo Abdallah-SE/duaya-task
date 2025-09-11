@@ -1,46 +1,16 @@
 <template>
   <form @submit.prevent="handleSubmit" class="space-y-6">
     <div class="grid grid-cols-1 gap-6 sm:grid-cols-2">
-      <FormField
-        v-model="form.name"
-        label="Full Name"
-        placeholder="Enter full name"
-        :error="errors.name"
-        :required="true"
+      <SelectField
+        v-if="isCreate"
+        v-model="form.user_id"
+        label="Select User"
+        placeholder="Choose a user"
+        :error="errors.user_id"
+        :required="isCreate"
+        :options="userOptions"
       />
       
-      <FormField
-        v-model="form.email"
-        type="email"
-        label="Email Address"
-        placeholder="Enter email address"
-        :error="errors.email"
-        :required="true"
-      />
-    </div>
-    
-    <div class="grid grid-cols-1 gap-6 sm:grid-cols-2">
-      <FormField
-        v-model="form.password"
-        type="password"
-        label="Password"
-        placeholder="Enter password"
-        :error="errors.password"
-        :required="isCreate"
-        :help="isCreate ? 'Minimum 8 characters' : 'Leave blank to keep current password'"
-      />
-      
-      <FormField
-        v-model="form.password_confirmation"
-        type="password"
-        label="Confirm Password"
-        placeholder="Confirm password"
-        :error="errors.password_confirmation"
-        :required="isCreate"
-      />
-    </div>
-    
-    <div class="grid grid-cols-1 gap-6 sm:grid-cols-2">
       <FormField
         v-model="form.job_title"
         label="Job Title"
@@ -48,7 +18,9 @@
         :error="errors.job_title"
         :required="true"
       />
-      
+    </div>
+    
+    <div class="grid grid-cols-1 gap-6 sm:grid-cols-2">
       <FormField
         v-model="form.department"
         label="Department"
@@ -56,9 +28,7 @@
         :error="errors.department"
         :required="true"
       />
-    </div>
-    
-    <div class="grid grid-cols-1 gap-6 sm:grid-cols-2">
+      
       <FormField
         v-model="form.hire_date"
         type="date"
@@ -112,6 +82,10 @@ const props = defineProps({
   isCreate: {
     type: Boolean,
     default: false
+  },
+  users: {
+    type: Array,
+    default: () => []
   }
 })
 
@@ -119,26 +93,35 @@ const emit = defineEmits(['submit', 'cancel'])
 
 // Form data
 const form = ref({
-  name: '',
-  email: '',
-  password: '',
-  password_confirmation: '',
+  user_id: '',
   job_title: '',
   department: '',
   hire_date: ''
+})
+
+// Helper function to format date for HTML date input (YYYY-MM-DD)
+const formatDateForInput = (dateString) => {
+  if (!dateString) return ''
+  const date = new Date(dateString)
+  return date.toISOString().split('T')[0]
+}
+
+// User options for select field
+const userOptions = computed(() => {
+  return props.users.map(user => ({
+    value: user.id,
+    label: `${user.name} (${user.email})`
+  }))
 })
 
 // Watch for initial data changes
 watch(() => props.initialData, (newData) => {
   if (newData) {
     form.value = {
-      name: newData?.name || '',
-      email: newData?.email || '',
-      password: '',
-      password_confirmation: '',
+      user_id: newData?.user_id || '',
       job_title: newData?.job_title || '',
       department: newData?.department || '',
-      hire_date: newData?.hire_date || ''
+      hire_date: newData?.hire_date ? formatDateForInput(newData.hire_date) : ''
     }
   }
 }, { immediate: true, deep: true })
@@ -147,12 +130,9 @@ watch(() => props.initialData, (newData) => {
 const handleSubmit = () => {
   const formData = { ...form.value }
   
-  // Remove empty password fields for updates
+  // Remove user_id for updates since we don't want to change the user
   if (!props.isCreate) {
-    if (!formData.password) {
-      delete formData.password
-      delete formData.password_confirmation
-    }
+    delete formData.user_id
   }
   
   emit('submit', formData)
