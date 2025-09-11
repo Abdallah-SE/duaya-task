@@ -55,6 +55,9 @@ class DashboardController extends Controller
         return Inertia::render('Dashboard', [
             'user' => $user,
             'userSettings' => $userSettings,
+            'initialSettings' => $userSettings, // Add this for IdleMonitor component
+            'canControlIdleMonitoring' => $user->canControlIdleMonitoring(),
+            'isIdleMonitoringEnabled' => $user->isIdleMonitoringEnabled(),
             'stats' => $stats,
             'recentActivities' => $recentActivities,
             'userPenalties' => $userPenalties,

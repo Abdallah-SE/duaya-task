@@ -29,6 +29,11 @@ return new class extends Migration
             $table->index('idle_monitoring_enabled');
             $table->index('idle_timeout');
         });
+
+        // Add idle monitoring control to roles table
+        Schema::table('roles', function (Blueprint $table) {
+            $table->boolean('idle_monitoring_enabled')->default(true)->after('guard_name');
+        });
     }
 
     /**
@@ -36,6 +41,11 @@ return new class extends Migration
      */
     public function down(): void
     {
+        // Remove idle monitoring column from roles table
+        Schema::table('roles', function (Blueprint $table) {
+            $table->dropColumn('idle_monitoring_enabled');
+        });
+        
         Schema::dropIfExists('idle_settings');
     }
 };

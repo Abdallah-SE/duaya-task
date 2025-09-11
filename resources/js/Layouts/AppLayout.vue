@@ -32,7 +32,9 @@
         <!-- Idle Monitoring Component -->
         <IdleMonitor 
             :user-id="user.id"
-            :initial-settings="userSettings"
+            :initial-settings="initialSettings || userSettings"
+            :can-control-idle-monitoring="canControlIdleMonitoring"
+            :is-idle-monitoring-enabled="isIdleMonitoringEnabled"
         />
     </div>
 </template>
@@ -44,7 +46,10 @@ import IdleMonitor from '@/Components/IdleMonitor.vue'
 
 const props = defineProps({
     user: Object,
-    userSettings: Object
+    userSettings: Object,
+    initialSettings: Object,
+    canControlIdleMonitoring: Boolean,
+    isIdleMonitoringEnabled: Boolean
 })
 
 // Removed roleBadgeClass since we're not using roles anymore

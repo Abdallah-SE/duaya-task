@@ -55,4 +55,10 @@ Route::prefix('api/idle-monitoring')->middleware(['auth', 'log.activity'])->grou
     Route::get('/settings', [IdleMonitoringController::class, 'getSettings']);
     Route::post('/update-settings', [IdleMonitoringController::class, 'updateSettings']);
     Route::get('/test-db', [IdleMonitoringController::class, 'testDatabase']);
+    
+    // Role-based idle monitoring management (Admin only)
+    Route::middleware('role:admin')->group(function () {
+        Route::get('/role-settings', [IdleMonitoringController::class, 'getRoleSettings']);
+        Route::post('/role-settings', [IdleMonitoringController::class, 'updateRoleSettings']);
+    });
 });

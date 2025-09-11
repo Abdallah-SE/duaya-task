@@ -28,14 +28,14 @@
                 <p style="text-align: center; margin-top: 5px; color: #666; font-size: 14px;">{{ warningCount }}/{{ maxWarnings }} Warnings</p>
             </div>
             
-            <button
-                @click="dismissWarning"
-                style="background: #3498db; color: white; border: none; padding: 12px 24px; border-radius: 5px; cursor: pointer; font-size: 16px; width: 100%;"
-                onmouseover="this.style.background='#2980b9'"
-                onmouseout="this.style.background='#3498db'"
-            >
-                I'm Still Here
-            </button>
+            <div style="text-align: center; color: #666; font-size: 14px;">
+                <p>This warning will automatically proceed in {{ countdown }} seconds...</p>
+                <div style="margin-top: 10px;">
+                    <div style="background: #f0f0f0; height: 4px; border-radius: 2px; overflow: hidden;">
+                        <div style="background: #e67e22; height: 100%; transition: width 1s linear;" :style="{ width: `${(countdown / 10) * 100}%` }"></div>
+                    </div>
+                </div>
+            </div>
         </div>
     </div>
 </template>
@@ -58,6 +58,14 @@ const props = defineProps({
             idle_monitoring_enabled: true,
             max_idle_warnings: 2
         })
+    },
+    canControlIdleMonitoring: {
+        type: Boolean,
+        default: false
+    },
+    isIdleMonitoringEnabled: {
+        type: Boolean,
+        default: true
     }
 })
 
@@ -68,6 +76,7 @@ const warningTitle = ref('')
 const warningMessage = ref('')
 const maxWarnings = ref(2)
 const idleTimeout = ref(5000) // 5 seconds in milliseconds
+const countdown = ref(10) // Countdown for automatic warning progression
 
 // Timer variables
 let idleTimer = null
@@ -161,33 +170,61 @@ const stopCsrfRefresh = () => {
     }
 }
 
-// Dismiss warning when user clicks "I'm Still Here"
-const dismissWarning = () => {
-    console.log('User dismissed warning, resetting everything')
-    
-    // Clear all timers
-    if (idleTimer) {
-        clearTimeout(idleTimer)
+// Start countdown for automatic warning progression
+const startCountdown = () => {
+    const countdownInterval = setInterval(() => {
+        countdown.value--
+        
+        if (countdown.value <= 0) {
+            clearInterval(countdownInterval)
+            handleWarningTimeout()
+        }
+    }, 1000)
+}
+
+// Handle idle warning API call
+const handleIdleWarningAPI = async () => {
+    try {
+        const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content')
+        const response = await axios.post('/api/idle-monitoring/handle-warning', {
+            warning_count: warningCount.value
+        }, {
+            headers: {
+                'X-CSRF-TOKEN': csrfToken,
+                'X-Requested-With': 'XMLHttpRequest',
+                'Content-Type': 'application/json',
+                'Accept': 'application/json'
+            }
+        })
+        
+        console.log('Handle warning API response:', response.data)
+        
+        // Store session ID for later use
+        if (response.data.session_id) {
+            currentSessionId = response.data.session_id
+        }
+        
+        // Only logout if this is the third warning and logout is required
+        if (warningCount.value >= 3 && response.data.logout_required) {
+            console.log('Third warning reached - logout required, redirecting...')
+            console.log('Penalty created:', response.data.penalty_id)
+            window.location.href = '/login?message=inactivity_logout'
+        }
+        
+    } catch (error) {
+        console.error('Error handling warning API:', error)
+        if (error.response?.status === 401) {
+            // User was logged out by server - force redirect
+            console.log('User logged out by server (401)')
+            window.location.href = '/login?message=inactivity_logout'
+        } else {
+            // Other error - log but don't redirect unless it's the third warning
+            console.error('Unexpected error during idle monitoring:', error)
+            if (warningCount.value >= 3) {
+                window.location.href = '/login?message=inactivity_logout'
+            }
+        }
     }
-    if (warningTimer) {
-        clearTimeout(warningTimer)
-    }
-    
-    // Hide modal and reset warning count
-    showWarningModal.value = false
-    warningCount.value = 0
-    
-    // End current idle session if exists
-    if (currentSessionId) {
-        endIdleSession()
-    }
-    
-    // Start fresh idle timer
-    console.log('Starting fresh idle timer after user dismissal')
-    idleTimer = setTimeout(() => {
-        console.log('Idle timeout triggered!')
-        handleIdleTimeout()
-    }, idleTimeout.value)
 }
 
 // Reset the idle timer
@@ -241,13 +278,11 @@ const handleIdleTimeout = async () => {
     warningCount.value++
     console.log('Incrementing warning count to:', warningCount.value)
     
-    // Start idle session only on first warning
-    if (warningCount.value === 1) {
-        await startIdleSessionWithRetry()
-    }
-    
-    // Show warning
+    // Show warning first
     showWarning()
+    
+    // Call API on ALL warnings to create idle sessions (but don't wait for response)
+    handleIdleWarningAPI()
 }
 
 // Show warning modal
@@ -256,13 +291,13 @@ const showWarning = () => {
     
     if (warningCount.value === 1) {
         warningTitle.value = '⚠️ First Alert - You appear to be idle'
-        warningMessage.value = 'We noticed you haven\'t been active for a while. Please confirm you\'re still here to continue your session.'
+        warningMessage.value = 'We noticed you haven\'t been active for a while. This warning will automatically proceed.'
     } else if (warningCount.value === 2) {
         warningTitle.value = '⚠️ Second Warning - Idle Activity Detected'
         warningMessage.value = 'This is your second warning. Continued inactivity will result in automatic logout and a penalty.'
     } else if (warningCount.value >= 3) {
         warningTitle.value = '🚨 Final Warning - Auto Logout Imminent'
-        warningMessage.value = 'This is your final warning. You will be automatically logged out if you don\'t respond.'
+        warningMessage.value = 'This is your final warning. You will be automatically logged out.'
     }
     
     console.log('Setting showWarningModal to true')
@@ -270,14 +305,12 @@ const showWarning = () => {
     console.log('showWarningModal value after setting:', showWarningModal.value)
     console.log('Modal should be visible now')
     
-    // Set timer for automatic action if user doesn't respond
-    // Give user 10 seconds to respond to each warning
-    warningTimer = setTimeout(() => {
-        handleWarningTimeout()
-    }, 10000) // 10 seconds to respond
+    // Start countdown
+    countdown.value = 10
+    startCountdown()
 }
 
-// Handle warning timeout (user didn't respond)
+// Handle warning timeout (automatic progression)
 const handleWarningTimeout = async () => {
     console.log('handleWarningTimeout called, warningCount:', warningCount.value)
     
@@ -288,7 +321,7 @@ const handleWarningTimeout = async () => {
     if (warningCount.value < 3) {
         console.log('Continuing with next warning...')
         // Start a new idle timer for the next warning (shorter timeout for subsequent warnings)
-        const nextTimeout = Math.max(1000, idleTimeout.value / 2) // At least 1 second, or half the original timeout
+        const nextTimeout = Math.max(2000, idleTimeout.value / 2) // At least 2 seconds, or half the original timeout
         console.log('Starting next warning timer with timeout:', nextTimeout, 'ms')
         idleTimer = setTimeout(() => {
             handleIdleTimeout()
@@ -296,47 +329,12 @@ const handleWarningTimeout = async () => {
         return
     }
     
-    // If we've reached the third warning, apply penalty and logout
-    try {
-        console.log('Third warning reached, applying penalty and logging out...')
-        console.log('Warning count:', warningCount.value, 'Session ID:', currentSessionId)
-        
-        const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content')
-        const response = await axios.post('/api/idle-monitoring/handle-warning', {
-            warning_count: warningCount.value,
-            session_id: currentSessionId
-        }, {
-            headers: {
-                'X-CSRF-TOKEN': csrfToken,
-                'X-Requested-With': 'XMLHttpRequest',
-                'Content-Type': 'application/json',
-                'Accept': 'application/json'
-            }
-        })
-        
-        console.log('Handle warning response:', response.data)
-        
-        if (response.data.logout_required) {
-            console.log('Logout required, redirecting...')
-            window.location.href = '/login?message=inactivity_logout'
-        } else {
-            // This shouldn't happen if we've reached max warnings
-            console.log('Unexpected response, redirecting anyway...')
-            window.location.href = '/login?message=inactivity_logout'
-        }
-        
-    } catch (error) {
-        console.error('Error handling warning:', error)
-        if (error.response?.status === 401) {
-            // User was logged out by server - force redirect
-            console.log('User logged out by server (401)')
-            window.location.href = '/login?message=inactivity_logout'
-        } else {
-            // Other error - still try to redirect to be safe
-            console.error('Unexpected error during idle monitoring:', error)
-            window.location.href = '/login?message=error'
-        }
-    }
+    // If we've reached the third warning, wait a moment for API response then logout
+    console.log('Third warning reached, waiting for API response...')
+    setTimeout(() => {
+        console.log('Third warning timeout - forcing logout')
+        window.location.href = '/login?message=inactivity_logout'
+    }, 2000) // Wait 2 seconds for API response
 }
 
 // End idle session

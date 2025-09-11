@@ -107,4 +107,30 @@ class User extends Authenticatable
     {
         return $this->employee !== null;
     }
+
+    /**
+     * Check if idle monitoring is enabled for this user's role.
+     */
+    public function isIdleMonitoringEnabled(): bool
+    {
+        $userRoles = $this->getRoleNames();
+        
+        // Check if any of the user's roles have idle monitoring enabled
+        foreach ($userRoles as $roleName) {
+            $roleSetting = \App\Models\RoleSetting::getForRoleName($roleName);
+            if ($roleSetting->isIdleMonitoringEnabled()) {
+                return true;
+            }
+        }
+        
+        return false;
+    }
+
+    /**
+     * Check if user can control idle monitoring (admin only).
+     */
+    public function canControlIdleMonitoring(): bool
+    {
+        return $this->hasRole('admin');
+    }
 }
