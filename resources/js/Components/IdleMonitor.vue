@@ -1,37 +1,4 @@
 <template>
-    <!-- Debug Info (always visible) -->
-    <div style="position: fixed; top: 10px; left: 10px; z-index: 10000; background: rgba(0,0,0,0.8); color: white; padding: 10px; border-radius: 5px; font-size: 12px; max-width: 300px;">
-        <div><strong>IdleMonitor Debug:</strong></div>
-        <div>isIdleMonitoringEnabled: {{ isIdleMonitoringEnabled }}</div>
-        <div>idle_timeout: {{ initialSettings?.idle_timeout }}</div>
-        <div>max_warnings: {{ initialSettings?.max_idle_warnings }}</div>
-        <div>Cache buster: {{ props.cache_buster || 'N/A' }}</div>
-        <div>Refresh token: {{ props.refresh_token || 'N/A' }}</div>
-        <div>Last updated: {{ new Date().toLocaleTimeString() }}</div>
-    </div>
-
-    <!-- Test Buttons (for debugging) -->
-    <div style="position: fixed; top: 10px; right: 10px; z-index: 10000; display: flex; gap: 5px;">
-        <button 
-            @click="testIdleWarning"
-            style="background: #ff6b6b; color: white; border: none; padding: 8px 16px; border-radius: 4px; cursor: pointer; font-size: 12px;"
-        >
-            Test Warning
-        </button>
-        <button 
-            @click="testDatabase"
-            style="background: #28a745; color: white; border: none; padding: 8px 16px; border-radius: 4px; cursor: pointer; font-size: 12px;"
-        >
-            Test DB
-        </button>
-        <button 
-            @click="forceRefresh"
-            style="background: #007bff; color: white; border: none; padding: 8px 16px; border-radius: 4px; cursor: pointer; font-size: 12px;"
-        >
-            Force Refresh
-        </button>
-    </div>
-
     <!-- Idle Warning Modal -->
     <div v-if="showWarningModal" style="position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); z-index: 9999; display: flex; align-items: center; justify-content: center;">
         <div style="background: white; padding: 30px; border-radius: 10px; max-width: 500px; width: 90%; box-shadow: 0 10px 30px rgba(0,0,0,0.3);">
@@ -83,14 +50,6 @@ const props = defineProps({
     isIdleMonitoringEnabled: {
         type: Boolean,
         default: true
-    },
-    cache_buster: {
-        type: String,
-        default: null
-    },
-    refresh_token: {
-        type: String,
-        default: null
     }
 })
 
@@ -111,36 +70,15 @@ let currentSessionId = null
 
 // Initialize the idle monitor
 onMounted(() => {
-    console.log('=== IDLE MONITOR DEBUG ===')
-    console.log('🔍 ALL PROPS RECEIVED:', props)
-    console.log('🔍 isIdleMonitoringEnabled prop:', props.isIdleMonitoringEnabled)
-    console.log('🔍 typeof isIdleMonitoringEnabled:', typeof props.isIdleMonitoringEnabled)
-    console.log('🔍 initialSettings:', props.initialSettings)
-    console.log('🔍 canControlIdleMonitoring:', props.canControlIdleMonitoring)
-    console.log('🔍 cache_buster:', props.cache_buster)
-    
     // Check if monitoring is enabled (role setting only)
     const isMonitoringEnabled = props.isIdleMonitoringEnabled
-    
-    console.log('🔍 Final isMonitoringEnabled:', isMonitoringEnabled)
-    console.log('🔍 Boolean conversion:', Boolean(props.isIdleMonitoringEnabled))
     
     if (isMonitoringEnabled) {
         idleTimeout.value = props.initialSettings.idle_timeout * 1000
         maxWarnings.value = props.initialSettings.max_idle_warnings
-        console.log('✅ Starting idle monitoring with timeout:', idleTimeout.value, 'ms')
         startIdleMonitoring()
         startCsrfRefresh()
-    } else {
-        console.log('❌ Idle monitoring disabled - Role or settings disabled')
-        console.log('Settings check:', {
-            hasSettings: !!props.initialSettings,
-            roleMonitoringEnabled: props.isIdleMonitoringEnabled,
-            userSettingEnabled: props.initialSettings?.idle_monitoring_enabled,
-            timeout: props.initialSettings?.idle_timeout
-        })
     }
-    console.log('=== END IDLE MONITOR DEBUG ===')
 })
 
 onUnmounted(() => {
@@ -283,54 +221,42 @@ const handleIdleWarningAPI = async () => {
 
 // Reset the idle timer
 const resetIdleTimer = () => {
-    console.log('resetIdleTimer called, showWarningModal:', showWarningModal.value, 'warningCount:', warningCount.value)
-    
     // Clear existing timers
     if (idleTimer) {
         clearTimeout(idleTimer)
         idleTimer = null
-        console.log('Cleared existing idle timer')
     }
     if (warningTimer) {
         clearTimeout(warningTimer)
         warningTimer = null
-        console.log('Cleared existing warning timer')
     }
     
     // Only hide warning modal if user clicked "I'm Still Here" button
     // Don't hide it just because user moved mouse - they might be trying to click the button
     if (showWarningModal.value) {
-        console.log('Warning modal is showing, not resetting timer')
         return // Don't reset the timer if modal is showing
     }
     
     // End current idle session if exists
     if (currentSessionId) {
-        console.log('Ending current idle session:', currentSessionId)
         endIdleSession()
     }
     
     // Reset warning count when user is active
     if (warningCount.value > 0) {
-        console.log('Resetting warning count from', warningCount.value, 'to 0')
         warningCount.value = 0
     }
     
     // Start new idle timer
-    console.log('Starting new idle timer with timeout:', idleTimeout.value, 'ms')
     idleTimer = setTimeout(() => {
-        console.log('Idle timer expired, calling handleIdleTimeout')
         handleIdleTimeout()
     }, idleTimeout.value)
 }
 
 // Handle idle timeout
 const handleIdleTimeout = async () => {
-    console.log('handleIdleTimeout called, current warning count:', warningCount.value)
-    
     // Increment warning count
     warningCount.value++
-    console.log('Incrementing warning count to:', warningCount.value)
     
     // Show warning first
     showWarning()
@@ -341,8 +267,6 @@ const handleIdleTimeout = async () => {
 
 // Show warning modal
 const showWarning = () => {
-    console.log('showWarning called, warningCount:', warningCount.value)
-    
     if (warningCount.value === 1) {
         warningTitle.value = '⚠️ First Alert - You appear to be idle'
         warningMessage.value = 'We noticed you haven\'t been active for a while. This warning will automatically proceed.'
@@ -354,10 +278,7 @@ const showWarning = () => {
         warningMessage.value = 'This is your final warning. You will be automatically logged out.'
     }
     
-    console.log('Setting showWarningModal to true')
     showWarningModal.value = true
-    console.log('showWarningModal value after setting:', showWarningModal.value)
-    console.log('Modal should be visible now')
     
     // Start countdown
     countdown.value = 10
@@ -366,17 +287,13 @@ const showWarning = () => {
 
 // Handle warning timeout (automatic progression)
 const handleWarningTimeout = async () => {
-    console.log('handleWarningTimeout called, warningCount:', warningCount.value)
-    
     // Hide the current modal
     showWarningModal.value = false
     
     // If we haven't reached the third warning yet, continue with next warning
     if (warningCount.value < 3) {
-        console.log('Continuing with next warning...')
         // Start a new idle timer for the next warning (shorter timeout for subsequent warnings)
         const nextTimeout = Math.max(2000, idleTimeout.value / 2) // At least 2 seconds, or half the original timeout
-        console.log('Starting next warning timer with timeout:', nextTimeout, 'ms')
         idleTimer = setTimeout(() => {
             handleIdleTimeout()
         }, nextTimeout)
@@ -384,9 +301,7 @@ const handleWarningTimeout = async () => {
     }
     
     // If we've reached the third warning, wait a moment for API response then logout
-    console.log('Third warning reached, waiting for API response...')
     setTimeout(() => {
-        console.log('Third warning timeout - forcing logout')
         window.location.href = '/login?message=inactivity_logout'
     }, 2000) // Wait 2 seconds for API response
 }
@@ -413,7 +328,6 @@ const endIdleSession = async () => {
                 'Accept': 'application/json'
             }
         })
-        console.log('Idle session ended:', currentSessionId)
         currentSessionId = null
     } catch (error) {
         console.error('Error ending idle session:', error)
@@ -445,58 +359,6 @@ const getSettings = async () => {
     }
 }
 
-// Test function to manually trigger idle warning
-const testIdleWarning = () => {
-    console.log('Manually triggering idle warning for testing...')
-    // Clear any existing timers
-    if (idleTimer) {
-        clearTimeout(idleTimer)
-    }
-    if (warningTimer) {
-        clearTimeout(warningTimer)
-    }
-    // Trigger the idle timeout
-    handleIdleTimeout()
-}
-
-// Test function to test database operations
-const testDatabase = async () => {
-    console.log('Testing database operations...')
-    try {
-        const csrfToken = await ensureFreshCsrfToken()
-        if (!csrfToken) {
-            throw new Error('Could not get CSRF token')
-        }
-        
-        const response = await axios.get('/api/idle-monitoring/test-db', {
-            headers: {
-                'X-CSRF-TOKEN': csrfToken,
-                'X-Requested-With': 'XMLHttpRequest',
-                'Content-Type': 'application/json',
-                'Accept': 'application/json'
-            }
-        })
-        console.log('Database test response:', response.data)
-        alert('Database test successful! Check console for details.')
-    } catch (error) {
-        console.error('Database test failed:', error)
-        alert('Database test failed! Check console for details.')
-    }
-}
-
-// Force refresh function
-const forceRefresh = () => {
-    console.log('🔄 Force refreshing page...')
-    // Clear all caches and reload
-    if ('caches' in window) {
-        caches.keys().then(names => {
-            names.forEach(name => {
-                caches.delete(name)
-            })
-        })
-    }
-    window.location.reload(true)
-}
 
 // Helper function to get CSRF token from cookie
 const getCsrfToken = () => {
@@ -545,13 +407,11 @@ const ensureFreshCsrfToken = async () => {
         // First try to get from current page
         let freshToken = getCsrfToken()
         if (freshToken) {
-            console.log('Using existing CSRF token:', freshToken)
             return freshToken
         }
         
         // If not available, refresh the cookie
         await axios.get('/sanctum/csrf-cookie')
-        console.log('Fresh CSRF cookie obtained')
         
         // Wait a bit for the cookie to be set
         await new Promise(resolve => setTimeout(resolve, 200))
@@ -559,14 +419,12 @@ const ensureFreshCsrfToken = async () => {
         // Try to get the fresh token
         freshToken = getCsrfToken()
         if (freshToken) {
-            console.log('Fresh CSRF token retrieved from cookie:', freshToken)
             return freshToken
         }
         
         // Last resort: make a request to get the token
         freshToken = await getCsrfTokenFromRequest()
         if (freshToken) {
-            console.log('Fresh CSRF token retrieved from request:', freshToken)
             return freshToken
         }
         
@@ -622,7 +480,6 @@ const startIdleSessionWithRetry = async (retryCount = 0) => {
 defineExpose({
     startIdleMonitoring,
     stopIdleMonitoring,
-    getSettings,
-    testIdleWarning
+    getSettings
 })
 </script>
