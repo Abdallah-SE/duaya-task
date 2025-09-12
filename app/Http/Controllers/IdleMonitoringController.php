@@ -119,16 +119,16 @@ class IdleMonitoringController extends Controller
         // Get idle settings
         $idleSettings = $user->getIdleSettings();
         
-        // Create a new idle session for EACH warning (1st=Alert, 2nd=Warning, 3rd=Auto Logout)
+        // Create a NEW idle session for EACH alert/warning as per task requirements
         // End any existing active session first
         IdleSession::where('user_id', $user->id)
             ->whereNull('idle_ended_at')
             ->update(['idle_ended_at' => now()]);
         
-        // Create new idle session for this specific warning
+        // Create new idle session for this specific alert/warning
         $idleSession = IdleSession::startSession($user->id);
         
-        Log::info('Idle session created for warning', [
+        Log::info('New idle session created for alert/warning', [
             'user_id' => $user->id,
             'warning_count' => $warningCount,
             'warning_type' => $this->getWarningType($warningCount),
@@ -137,7 +137,16 @@ class IdleMonitoringController extends Controller
             'max_warnings' => $idleSettings->max_idle_warnings
         ]);
         
-        // Fire event for idle session start
+        Log::info('Processing idle alert/warning', [
+            'user_id' => $user->id,
+            'warning_count' => $warningCount,
+            'warning_type' => $this->getWarningType($warningCount),
+            'session_id' => $idleSession->id,
+            'idle_timeout' => $idleSettings->idle_timeout,
+            'max_warnings' => $idleSettings->max_idle_warnings
+        ]);
+        
+        // Fire event for idle session start (for each alert/warning)
         event(new UserActivityEvent(
             user: $user,
             action: 'idle_session_started',
@@ -157,8 +166,31 @@ class IdleMonitoringController extends Controller
             timeoutSeconds: $idleSettings->idle_timeout
         ));
         
+        // Log each alert/warning as an activity
+        $actionName = match($warningCount) {
+            1 => 'idle_alert_first',
+            2 => 'idle_warning_second', 
+            3 => 'idle_warning_third',
+            default => 'idle_warning_' . $warningCount
+        };
+        
+        event(new UserActivityEvent(
+            user: $user,
+            action: $actionName,
+            subjectType: 'App\Models\IdleSession',
+            subjectId: $idleSession->id,
+            ipAddress: $request->ip(),
+            device: $this->getDeviceInfo($request),
+            browser: $this->getBrowserInfo($request)
+        ));
+        
         // Check if this is the third warning (should trigger penalty and logout)
         // According to task: 1st=Alert, 2nd=Warning, 3rd=Auto Logout + Penalty
+        Log::info('Checking warning count for penalty', [
+            'warning_count' => $warningCount,
+            'should_apply_penalty' => $warningCount >= 3
+        ]);
+        
         if ($warningCount >= 3) {
             Log::info('Third warning reached, applying penalty and logout', [
                 'user_id' => $user->id,
@@ -175,7 +207,7 @@ class IdleMonitoringController extends Controller
             'message' => $this->getWarningMessage($warningCount),
             'warning_count' => $warningCount,
             'warning_type' => $this->getWarningType($warningCount),
-            'max_warnings' => 3,
+            'max_warnings' => 3, // Fixed to 3 as per task requirements
             'session_id' => $idleSession->id,
             'idle_timeout' => $idleSettings->idle_timeout,
             'next_action' => $warningCount + 1 >= 3 ? 'penalty' : 'warning',
@@ -214,8 +246,10 @@ class IdleMonitoringController extends Controller
      */
     private function applyPenalty($user, Request $request, $sessionId)
     {
+        $warningCount = $request->input('warning_count', 1);
+        
         try {
-            Log::info('Applying penalty for third warning - user: ' . $user->id . ', session: ' . $sessionId);
+            Log::info('Applying penalty for max warning - user: ' . $user->id . ', session: ' . $sessionId . ', warning count: ' . $warningCount);
             
             // Create penalty for third warning
             $penalty = Penalty::createPenalty(
@@ -268,7 +302,7 @@ class IdleMonitoringController extends Controller
                 'message' => 'Third warning - penalty applied and user logged out',
                 'penalty_id' => $penalty->id,
                 'logout_required' => true,
-                'warning_count' => 3
+                'warning_count' => $warningCount
             ], 401);
             
         } catch (\Exception $e) {
@@ -288,7 +322,7 @@ class IdleMonitoringController extends Controller
                 'success' => false,
                 'message' => 'Error applying penalty but user logged out due to third warning',
                 'logout_required' => true,
-                'warning_count' => 3
+                'warning_count' => $warningCount
             ], 401);
         }
     }

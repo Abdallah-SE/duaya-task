@@ -21,7 +21,7 @@ class IdleSettingsSeeder extends Seeder
                 'user_id' => $user->id,
                 'idle_timeout' => 5, // 5 seconds as per task requirements
                 'idle_monitoring_enabled' => true,
-                'max_idle_warnings' => 2, // 2 warnings before logout
+                'max_idle_warnings' => 3, // 3 warnings before logout
             ]);
         }
     }

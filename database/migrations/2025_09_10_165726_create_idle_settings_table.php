@@ -16,7 +16,7 @@ return new class extends Migration
              
             // Simple settings for idle monitoring (as per task requirements)
             $table->unsignedTinyInteger('idle_timeout')->default(5); // Timeout in seconds (default 5s as per task)
-             $table->unsignedTinyInteger('max_idle_warnings')->default(2); // Max warnings before logout (default 2)
+             $table->unsignedTinyInteger('max_idle_warnings')->default(3); // Max warnings before logout (default 3)
             
             $table->timestamps();
             

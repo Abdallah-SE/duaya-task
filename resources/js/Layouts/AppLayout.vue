@@ -51,7 +51,6 @@
             v-if="user?.id && shouldShowIdleMonitor"
             :user-id="user.id"
             :initial-settings="initialSettings || userSettings"
-            :can-control-idle-monitoring="canControlIdleMonitoring"
             :is-idle-monitoring-enabled="isIdleMonitoringEnabled"
         />
     </div>

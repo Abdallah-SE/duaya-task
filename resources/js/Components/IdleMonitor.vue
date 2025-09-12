@@ -31,13 +31,13 @@
             <div v-if="warningCount > 1" class="mb-4">
                 <div class="flex justify-between text-sm text-gray-600 mb-1">
                     <span>Warning Progress</span>
-                    <span>{{ warningCount }}/3</span>
+                    <span>{{ warningCount }}/{{ maxWarnings }}</span>
                 </div>
                 <div class="w-full bg-gray-200 rounded-full h-2">
                     <div 
                         class="h-2 rounded-full transition-all duration-300"
                         :class="warningCount === 2 ? 'bg-orange-500' : 'bg-red-500'"
-                        :style="{ width: `${(warningCount / 3) * 100}%` }"
+                        :style="{ width: `${(warningCount / maxWarnings) * 100}%` }"
                     ></div>
                 </div>
             </div>
@@ -60,14 +60,14 @@
             <!-- Action Buttons -->
             <div class="flex justify-end space-x-3">
                 <button
-                    v-if="warningCount < 3"
+                    v-if="warningCount < maxWarnings"
                     @click="acknowledgeWarning"
                     class="px-4 py-2 text-sm font-medium text-white bg-blue-600 border border-transparent rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
                 >
                     I'm Still Here
                 </button>
                 <button
-                    v-if="warningCount >= 3"
+                    v-if="warningCount >= maxWarnings"
                     @click="forceLogout"
                     class="px-4 py-2 text-sm font-medium text-white bg-red-600 border border-transparent rounded-md hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500"
                 >
@@ -110,6 +110,11 @@ const countdown = ref(10)
 // Timer variables
 let idleTimer = null
 let countdownTimer = null
+
+// Computed properties
+const maxWarnings = computed(() => {
+    return 3 // Fixed to 3 as per task requirements
+})
 
 // Computed properties
 const warningTitle = computed(() => {
@@ -200,25 +205,37 @@ const resetIdleTimer = () => {
         return
     }
     
-    // Reset warning count when user is active
-    if (warningCount.value > 0) {
+    // Only reset warning count if no modal is showing and user is truly active
+    // Don't reset during warning sequence
+    if (warningCount.value > 0 && !showWarningModal.value) {
         warningCount.value = 0
         console.log('🔄 User became active - reset warning count to 0')
     }
     
-    // Start new idle timer - use timeout from idle_settings table
-    const timeout = (props.initialSettings?.idle_timeout || 5) * 1000
-    console.log('Setting idle timeout to:', timeout, 'ms (', props.initialSettings?.idle_timeout, 'seconds from idle_settings)')
-    idleTimer = setTimeout(() => {
-        handleIdleTimeout()
-    }, timeout)
+    // Only start new idle timer if no warning modal is showing
+    if (!showWarningModal.value) {
+        // Start new idle timer - use timeout from idle_settings table
+        const timeout = (props.initialSettings?.idle_timeout || 5) * 1000
+        console.log('Setting idle timeout to:', timeout, 'ms (', props.initialSettings?.idle_timeout, 'seconds from idle_settings)')
+        idleTimer = setTimeout(() => {
+            handleIdleTimeout()
+        }, timeout)
+    }
 }
 
 const handleIdleTimeout = async () => {
+    // Prevent multiple simultaneous calls
+    if (showWarningModal.value) {
+        console.log('⚠️ Warning modal already showing, ignoring duplicate timeout')
+        return
+    }
+    
     // Increment warning count
     warningCount.value++
     
-    console.log(`⚠️ Idle timeout detected - Warning ${warningCount.value}/3`)
+    console.log(`⚠️ Idle timeout detected - Warning ${warningCount.value}/${maxWarnings.value}`)
+    console.log('Current warning count:', warningCount.value, 'Max warnings:', maxWarnings.value)
+    console.log('Is this the third warning?', warningCount.value === 3)
     
     // Show warning first
     showWarning()
@@ -231,21 +248,22 @@ const handleWarningTimeout = () => {
     // Hide the current modal
     showWarningModal.value = false
     
-    // If we haven't reached the third warning yet, continue with next warning
-    if (warningCount.value < 3) {
-        // Start a new idle timer for the next warning using timeout from idle_settings
-        const nextTimeout = (props.initialSettings?.idle_timeout || 5) * 1000
-        console.log('Setting next warning timeout to:', nextTimeout, 'ms (', props.initialSettings?.idle_timeout, 'seconds from idle_settings)')
-        idleTimer = setTimeout(() => {
-            handleIdleTimeout()
-        }, nextTimeout)
+    console.log('Warning timeout - current count:', warningCount.value, 'max:', maxWarnings.value)
+    
+    // If we haven't reached the max warnings yet, show next warning immediately
+    if (warningCount.value < maxWarnings.value) {
+        console.log('Progressing to next warning:', warningCount.value + 1)
+        // Increment warning count and show next warning
+        warningCount.value++
+        console.log('New warning count:', warningCount.value, 'Is third?', warningCount.value === 3)
+        showWarning()
+        handleIdleWarningAPI()
         return
     }
     
-    // If we've reached the third warning, wait a moment for API response then logout
-    setTimeout(() => {
-        window.location.href = '/login?message=inactivity_logout'
-    }, 2000) // Wait 2 seconds for API response
+    // If we've reached the max warnings, the backend will handle logout
+    // Don't do anything here - let the API response handle it
+    console.log('Max warnings reached - backend will handle logout')
 }
 
 const showWarning = () => {
@@ -275,39 +293,57 @@ const startCountdown = () => {
 const handleIdleWarningAPI = async () => {
     try {
         console.log('🔍 Making API call with warning count:', warningCount.value)
+        console.log('🔍 Max warnings:', maxWarnings.value)
+        console.log('🔍 Is third warning?', warningCount.value >= 3)
         
-        const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content')
-        
-        const response = await fetch('/idle-monitoring/handle-warning', {
-            method: 'POST',
+        // Use axios with proper CSRF handling
+        const response = await axios.post('/api/idle-monitoring/handle-warning', {
+            warning_count: warningCount.value
+        }, {
             headers: {
                 'Content-Type': 'application/json',
                 'Accept': 'application/json',
-                'X-CSRF-TOKEN': csrfToken,
                 'X-Requested-With': 'XMLHttpRequest'
-            },
-            credentials: 'same-origin',
-            body: JSON.stringify({
-                warning_count: warningCount.value
-            })
+            }
         })
         
-        if (!response.ok) {
-            throw new Error(`HTTP error! status: ${response.status}`)
-        }
+        console.log('✅ API call successful:', response.data)
         
-        const data = await response.json()
-        console.log('✅ API call successful:', data)
+        const data = response.data
         
-        // Only logout if this is the third warning and logout is required
-        if (warningCount.value >= 3 && data.logout_required) {
-            console.log('Third warning reached - logout required, redirecting...')
+        // Only logout if this is the max warning and logout is required
+        console.log('Checking logout conditions:', {
+            warningCount: warningCount.value,
+            maxWarnings: maxWarnings.value,
+            logoutRequired: data?.logout_required,
+            shouldLogout: warningCount.value >= maxWarnings.value && data?.logout_required
+        })
+        
+        if (warningCount.value >= maxWarnings.value && data?.logout_required) {
+            console.log('Max warning reached - logout required, redirecting...')
             window.location.href = '/login?message=inactivity_logout'
         }
         
     } catch (error) {
-        console.error('Error handling warning API:', error)
-        if (warningCount.value >= 3) {
+        console.error('❌ API call failed:', error)
+        
+        // Handle 401 error (user logged out)
+        if (error.response?.status === 401) {
+            console.log('User logged out by server (401) - redirecting to login')
+            window.location.replace('/login?message=inactivity_logout')
+            return
+        }
+        
+        // Handle 419 error (CSRF token mismatch)
+        if (error.response?.status === 419) {
+            console.error('❌ CSRF token mismatch (419) - trying to refresh page')
+            window.location.reload()
+            return
+        }
+        
+        // Only redirect on max warning, not on network errors
+        if (warningCount.value >= maxWarnings.value) {
+            console.log('Max warning reached - redirecting due to error')
             window.location.href = '/login?message=inactivity_logout'
         }
     }
@@ -331,7 +367,7 @@ const forceLogout = () => {
 
 // Lifecycle
 onMounted(() => {
-    console.log('🔍 IdleMonitorSimple mounted with props:', {
+    console.log('🔍 IdleMonitor mounted with props:', {
         userId: props.userId,
         isIdleMonitoringEnabled: props.isIdleMonitoringEnabled,
         initialSettings: props.initialSettings,
