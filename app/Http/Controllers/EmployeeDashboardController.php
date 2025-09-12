@@ -31,63 +31,35 @@ class EmployeeDashboardController extends Controller
         $isIdleMonitoringEnabled = $user->isIdleMonitoringEnabled();
         Log::info('🔍 EmployeeDashboardController - isIdleMonitoringEnabled: ' . ($isIdleMonitoringEnabled ? 'true' : 'false'));
         
-        // Get comprehensive statistics for employee
+        // Get simplified statistics for employee
         $stats = [
-            'myActivities' => ActivityLog::where('user_id', $user->id)->count(),
-            'myPenalties' => $user->penalties()->count(),
-            'myIdleSessions' => $user->idleSessions()->count(),
-            'totalIdleTime' => $user->idleSessions()->sum('duration_seconds'),
-            'averageIdleTime' => $user->idleSessions()->avg('duration_seconds') ?? 0,
             'todayActivities' => ActivityLog::where('user_id', $user->id)
                 ->whereDate('created_at', today())
                 ->count(),
-            'thisWeekActivities' => ActivityLog::where('user_id', $user->id)
-                ->whereBetween('created_at', [now()->startOfWeek(), now()->endOfWeek()])
-                ->count(),
-            'thisMonthActivities' => ActivityLog::where('user_id', $user->id)
-                ->whereMonth('created_at', now()->month)
-                ->whereYear('created_at', now()->year)
-                ->count(),
+            'myPenalties' => $user->penalties()->count(),
+            'myIdleSessions' => $user->idleSessions()->count(),
         ];
         
-        // Get employee's recent activities with more details
+        // Get employee's recent activities (simplified)
         $myActivities = ActivityLog::where('user_id', $user->id)
             ->latest()
-            ->limit(15)
+            ->limit(8)
             ->get()
             ->map(function ($activity) {
                 return [
                     'id' => $activity->id,
                     'action' => $activity->action,
-                    'subject_type' => $activity->subject_type,
-                    'subject_id' => $activity->subject_id,
-                    'ip_address' => $activity->ip_address,
-                    'device' => $activity->device,
-                    'browser' => $activity->browser,
                     'created_at' => $activity->created_at,
                 ];
             });
-
-        // Get activity breakdown by action type
-        $activityBreakdown = ActivityLog::where('user_id', $user->id)
-            ->selectRaw('action, COUNT(*) as count')
-            ->groupBy('action')
-            ->orderBy('count', 'desc')
-            ->get()
-            ->map(function ($item) {
-                return [
-                    'action' => $item->action,
-                    'count' => $item->count,
-                ];
-            });
         
-        // Get employee's penalties
+        // Get employee's penalties (simplified)
         $myPenalties = $user->penalties()
             ->latest('date')
             ->limit(5)
             ->get();
         
-        // Get employee's idle sessions
+        // Get employee's idle sessions (simplified)
         $myIdleSessions = $user->idleSessions()
             ->latest()
             ->limit(5)
@@ -101,7 +73,6 @@ class EmployeeDashboardController extends Controller
             'isIdleMonitoringEnabled' => $isIdleMonitoringEnabled,
             'stats' => $stats,
             'myActivities' => $myActivities,
-            'activityBreakdown' => $activityBreakdown,
             'myPenalties' => $myPenalties,
             'myIdleSessions' => $myIdleSessions,
             'greeting' => $this->getGreeting($user),

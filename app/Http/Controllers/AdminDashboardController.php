@@ -10,6 +10,7 @@ use App\Models\Penalty;
 use App\Models\ActivityLog;
 use App\Models\IdleSetting;
 use App\Models\IdleSession;
+use App\Models\RoleSetting;
 
 class AdminDashboardController extends Controller
 {
@@ -417,15 +418,25 @@ class AdminDashboardController extends Controller
                 'idle_timeout' => 5,
                 'warning_threshold' => 2,
                 'auto_logout_enabled' => true,
-                'monitoring_enabled' => true,
+                'monitoring_enabled' => $this->isMonitoringEnabledForAnyRole(),
             ];
         }
 
         return [
-            'idle_timeout' => $settings->idle_timeout_seconds,
-            'warning_threshold' => $settings->warning_threshold,
-            'auto_logout_enabled' => $settings->auto_logout_enabled,
-            'monitoring_enabled' => $settings->monitoring_enabled,
+            'idle_timeout' => $settings->idle_timeout,
+            'warning_threshold' => $settings->max_idle_warnings,
+            'auto_logout_enabled' => true, // Always enabled as per task requirements
+            'monitoring_enabled' => $this->isMonitoringEnabledForAnyRole(),
         ];
+    }
+
+    /**
+     * Check if monitoring is enabled for any role
+     */
+    private function isMonitoringEnabledForAnyRole()
+    {
+        // Check if any role has monitoring enabled
+        $enabledRoles = RoleSetting::where('idle_monitoring_enabled', true)->count();
+        return $enabledRoles > 0;
     }
 }

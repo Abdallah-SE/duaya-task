@@ -32,28 +32,8 @@
                 </div>
             </div>
 
-            <!-- Employee Stats Cards -->
-            <div class="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4">
-                <!-- Total Activities -->
-                <div class="bg-white overflow-hidden shadow rounded-lg">
-                    <div class="p-5">
-                        <div class="flex items-center">
-                            <div class="flex-shrink-0">
-                                <svg class="h-6 w-6 text-blue-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
-                                </svg>
-                            </div>
-                            <div class="ml-5 w-0 flex-1">
-                                <dl>
-                                    <dt class="text-sm font-medium text-gray-500 truncate">Total Activities</dt>
-                                    <dd class="text-lg font-medium text-gray-900">{{ stats.myActivities }}</dd>
-                                    <dd class="text-xs text-gray-500">All time</dd>
-                                </dl>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
+            <!-- Employee Stats Cards - Simplified -->
+            <div class="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3">
                 <!-- Today's Activities -->
                 <div class="bg-white overflow-hidden shadow rounded-lg">
                     <div class="p-5">
@@ -115,150 +95,50 @@
                 </div>
             </div>
 
-            <!-- Additional Performance Metrics -->
-            <div class="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3">
-                <!-- Weekly Activities -->
-                <div class="bg-white overflow-hidden shadow rounded-lg">
-                    <div class="p-5">
-                        <div class="flex items-center">
-                            <div class="flex-shrink-0">
-                                <svg class="h-6 w-6 text-indigo-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                                </svg>
-                            </div>
-                            <div class="ml-5 w-0 flex-1">
-                                <dl>
-                                    <dt class="text-sm font-medium text-gray-500 truncate">This Week</dt>
-                                    <dd class="text-lg font-medium text-gray-900">{{ stats.thisWeekActivities }}</dd>
-                                    <dd class="text-xs text-gray-500">Activities</dd>
-                                </dl>
-                            </div>
-                        </div>
-                    </div>
-                </div>
 
-                <!-- Monthly Activities -->
-                <div class="bg-white overflow-hidden shadow rounded-lg">
-                    <div class="p-5">
-                        <div class="flex items-center">
-                            <div class="flex-shrink-0">
-                                <svg class="h-6 w-6 text-purple-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
-                                </svg>
-                            </div>
-                            <div class="ml-5 w-0 flex-1">
-                                <dl>
-                                    <dt class="text-sm font-medium text-gray-500 truncate">This Month</dt>
-                                    <dd class="text-lg font-medium text-gray-900">{{ stats.thisMonthActivities }}</dd>
-                                    <dd class="text-xs text-gray-500">Activities</dd>
-                                </dl>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Total Idle Time -->
-                <div class="bg-white overflow-hidden shadow rounded-lg">
-                    <div class="p-5">
-                        <div class="flex items-center">
-                            <div class="flex-shrink-0">
-                                <svg class="h-6 w-6 text-orange-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-                                </svg>
-                            </div>
-                            <div class="ml-5 w-0 flex-1">
-                                <dl>
-                                    <dt class="text-sm font-medium text-gray-500 truncate">Total Idle Time</dt>
-                                    <dd class="text-lg font-medium text-gray-900">{{ formatDuration(stats.totalIdleTime) }}</dd>
-                                    <dd class="text-xs text-gray-500">All time</dd>
-                                </dl>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Activity Breakdown Chart -->
+            <!-- My Recent Activities - Simplified -->
             <div class="bg-white shadow overflow-hidden sm:rounded-md">
                 <div class="px-4 py-5 sm:px-6">
-                    <h3 class="text-lg leading-6 font-medium text-gray-900">Activity Breakdown</h3>
-                    <p class="mt-1 max-w-2xl text-sm text-gray-500">Your activities categorized by action type</p>
-                </div>
-                <div class="px-4 py-5 sm:px-6">
-                    <div class="space-y-3">
-                        <div v-for="breakdown in activityBreakdown" :key="breakdown.action" class="flex items-center justify-between">
-                            <div class="flex items-center">
-                                <div class="flex-shrink-0">
-                                    <div class="h-3 w-3 rounded-full" :class="getActionColor(breakdown.action)"></div>
-                                </div>
-                                <div class="ml-3">
-                                    <div class="text-sm font-medium text-gray-900 capitalize">
-                                        {{ breakdown.action.replace(/_/g, ' ') }}
-                                    </div>
-                                </div>
-                            </div>
-                            <div class="flex items-center">
-                                <div class="text-sm font-medium text-gray-900">{{ breakdown.count }}</div>
-                                <div class="ml-2 text-xs text-gray-500">times</div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <!-- My Recent Activities -->
-            <div class="bg-white shadow overflow-hidden sm:rounded-md">
-                <div class="px-4 py-5 sm:px-6">
-                    <h3 class="text-lg leading-6 font-medium text-gray-900">My Recent Activities</h3>
-                    <p class="mt-1 max-w-2xl text-sm text-gray-500">Your recent system activities and CRUD operations</p>
+                    <h3 class="text-lg leading-6 font-medium text-gray-900">Recent Activities</h3>
+                    <p class="mt-1 max-w-2xl text-sm text-gray-500">Your recent system activities</p>
                 </div>
                 <ul class="divide-y divide-gray-200">
-                    <li v-for="activity in myActivities" :key="activity.id" class="px-4 py-4 sm:px-6">
+                    <li v-for="activity in myActivities.slice(0, 8)" :key="activity.id" class="px-4 py-3 sm:px-6">
                         <div class="flex items-center justify-between">
                             <div class="flex items-center">
                                 <div class="flex-shrink-0">
-                                    <div class="h-8 w-8 rounded-full flex items-center justify-center" :class="getActivityIconClass(activity.action)">
-                                        <svg class="h-4 w-4" :class="getActivityIconColor(activity.action)" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <div class="h-6 w-6 rounded-full flex items-center justify-center" :class="getActivityIconClass(activity.action)">
+                                        <svg class="h-3 w-3" :class="getActivityIconColor(activity.action)" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" :d="getActivityIconPath(activity.action)" />
                                         </svg>
                                     </div>
                                 </div>
-                                <div class="ml-4">
+                                <div class="ml-3">
                                     <div class="text-sm font-medium text-gray-900">
                                         {{ formatActivityAction(activity.action) }}
                                     </div>
-                                    <div class="text-xs text-gray-400">
-                                        {{ activity.subject_type ? formatSubjectType(activity.subject_type) : 'System Action' }}
-                                        <span v-if="activity.subject_id"> • ID: {{ activity.subject_id }}</span>
-                                    </div>
-                                    <div class="text-xs text-gray-400">
-                                        {{ activity.device }} • {{ activity.browser }} • {{ activity.ip_address }}
+                                    <div class="text-xs text-gray-500">
+                                        {{ formatDate(activity.created_at) }}
                                     </div>
                                 </div>
-                            </div>
-                            <div class="text-sm text-gray-500">
-                                {{ formatDate(activity.created_at) }}
                             </div>
                         </div>
                     </li>
                 </ul>
             </div>
 
-            <!-- My Penalties -->
+            <!-- My Penalties - Simplified -->
             <div v-if="myPenalties.length > 0" class="bg-white shadow overflow-hidden sm:rounded-md">
                 <div class="px-4 py-5 sm:px-6">
-                    <h3 class="text-lg leading-6 font-medium text-gray-900">My Penalties</h3>
+                    <h3 class="text-lg leading-6 font-medium text-gray-900">Penalties</h3>
                     <p class="mt-1 max-w-2xl text-sm text-gray-500">Penalties applied to your account</p>
                 </div>
                 <ul class="divide-y divide-gray-200">
-                    <li v-for="penalty in myPenalties" :key="penalty.id" class="px-4 py-4 sm:px-6">
+                    <li v-for="penalty in myPenalties.slice(0, 5)" :key="penalty.id" class="px-4 py-3 sm:px-6">
                         <div class="flex items-center justify-between">
                             <div>
                                 <div class="text-sm font-medium text-gray-900">
                                     {{ penalty.reason }}
-                                </div>
-                                <div class="text-sm text-gray-500">
-                                    Count: {{ penalty.count }}
                                 </div>
                             </div>
                             <div class="text-sm text-gray-500">
@@ -269,21 +149,18 @@
                 </ul>
             </div>
 
-            <!-- My Idle Sessions -->
+            <!-- My Idle Sessions - Simplified -->
             <div v-if="myIdleSessions.length > 0" class="bg-white shadow overflow-hidden sm:rounded-md">
                 <div class="px-4 py-5 sm:px-6">
-                    <h3 class="text-lg leading-6 font-medium text-gray-900">My Idle Sessions</h3>
+                    <h3 class="text-lg leading-6 font-medium text-gray-900">Idle Sessions</h3>
                     <p class="mt-1 max-w-2xl text-sm text-gray-500">Your recent idle time sessions</p>
                 </div>
                 <ul class="divide-y divide-gray-200">
-                    <li v-for="session in myIdleSessions" :key="session.id" class="px-4 py-4 sm:px-6">
+                    <li v-for="session in myIdleSessions.slice(0, 5)" :key="session.id" class="px-4 py-3 sm:px-6">
                         <div class="flex items-center justify-between">
                             <div>
                                 <div class="text-sm font-medium text-gray-900">
                                     Session {{ session.id }}
-                                </div>
-                                <div class="text-sm text-gray-500">
-                                    Duration: {{ formatDuration(session.duration) }}
                                 </div>
                             </div>
                             <div class="text-sm text-gray-500">
@@ -310,7 +187,6 @@ const props = defineProps({
     isIdleMonitoringEnabled: Boolean,
     stats: Object,
     myActivities: Array,
-    activityBreakdown: Array,
     myPenalties: Array,
     myIdleSessions: Array,
     greeting: String
@@ -333,20 +209,6 @@ const formatDuration = (duration) => {
 }
 
 // Helper functions for activity display
-const getActionColor = (action) => {
-    const colors = {
-        'create': 'bg-green-400',
-        'read': 'bg-blue-400',
-        'update': 'bg-yellow-400',
-        'delete': 'bg-red-400',
-        'login': 'bg-indigo-400',
-        'logout': 'bg-purple-400',
-        'view_admin_settings': 'bg-gray-400',
-        'update_global_idle_settings': 'bg-orange-400',
-        'toggle_role_monitoring': 'bg-pink-400',
-    }
-    return colors[action] || 'bg-gray-400'
-}
 
 const getActivityIconClass = (action) => {
     const classes = {
@@ -411,8 +273,4 @@ const formatActivityAction = (action) => {
     return actionMap[action] || action.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())
 }
 
-const formatSubjectType = (subjectType) => {
-    if (!subjectType) return 'System'
-    return subjectType.split('\\').pop().replace(/([A-Z])/g, ' $1').trim()
-}
 </script>
