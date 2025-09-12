@@ -128,3 +128,28 @@ Route::get('/debug-idle', function () {
 
 // Web route for idle monitoring (better CSRF handling)
 Route::post('/idle-monitoring/handle-warning', [IdleMonitoringController::class, 'handleIdleWarning'])->middleware(['auth', 'log.activity']);
+
+// Test route for idle monitoring
+Route::get('/test-idle-monitoring', function () {
+    $user = Auth::user();
+    if (!$user) {
+        return response()->json(['error' => 'Not authenticated']);
+    }
+    
+    $userSettings = $user->getIdleSettings();
+    $isIdleMonitoringEnabled = $user->isIdleMonitoringEnabled();
+    
+    return Inertia::render('TestIdleMonitoring', [
+        'user' => $user,
+        'userSettings' => $userSettings,
+        'initialSettings' => $userSettings,
+        'canControlIdleMonitoring' => $user->canControlIdleMonitoring(),
+        'isIdleMonitoringEnabled' => $isIdleMonitoringEnabled,
+        'testData' => [
+            'idle_timeout' => $userSettings->idle_timeout,
+            'max_warnings' => $userSettings->max_idle_warnings,
+            'monitoring_enabled' => $isIdleMonitoringEnabled,
+            'user_roles' => $user->getRoleNames()->toArray(),
+        ]
+    ]);
+})->middleware(['auth', 'log.activity']);

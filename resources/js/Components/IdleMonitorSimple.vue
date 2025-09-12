@@ -41,7 +41,7 @@
                     ></div>
                 </div>
             </div>
-            
+
             <!-- Countdown Timer -->
             <div class="mb-6">
                 <div class="text-center">
@@ -115,26 +115,26 @@ let countdownTimer = null
 const warningTitle = computed(() => {
     switch (warningCount.value) {
         case 1:
-            return '⚠️ Alert - Inactivity Detected'
+            return '⚠️ First Alert - You appear to be idle'
         case 2:
-            return '⚠️ Warning - Inactivity Detected'
+            return '⚠️ Second Warning - Idle Activity Detected'
         case 3:
-            return '🚨 Auto Logout - Inactivity Detected'
+            return '🚨 Final Warning - Auto Logout Imminent'
         default:
-            return 'Inactivity Alert'
+            return 'Idle Warning'
     }
 })
 
 const warningMessage = computed(() => {
     switch (warningCount.value) {
         case 1:
-            return 'You have been inactive for a while. This is your first alert.'
+            return 'We noticed you haven\'t been active for a while. This is your first warning.'
         case 2:
-            return 'You have been inactive again. This is your second warning. Continued inactivity will result in automatic logout and penalty.'
+            return 'This is your second warning. Continued inactivity will result in automatic logout and a penalty.'
         case 3:
-            return 'You have been inactive for the third time. You will be automatically logged out and a penalty will be applied.'
+            return 'This is your final warning. You will be automatically logged out and a penalty will be applied.'
         default:
-            return 'Inactivity detected.'
+            return 'You appear to be idle.'
     }
 })
 
@@ -192,11 +192,8 @@ const resetIdleTimer = () => {
         countdownTimer = null
     }
     
-    // If modal is showing, restart the countdown timer
-    // User needs to explicitly click "I'm Still Here" to dismiss the modal
+    // Don't reset if modal is showing
     if (showWarningModal.value) {
-        console.log('🔄 User moved mouse while modal is showing - restarting countdown')
-        startCountdown()
         return
     }
     
@@ -206,9 +203,8 @@ const resetIdleTimer = () => {
         console.log('🔄 User became active - reset warning count to 0')
     }
     
-    // Start new idle timer - use timeout from idle_settings table
+    // Start new idle timer
     const timeout = (props.initialSettings?.idle_timeout || 5) * 1000
-    console.log('Setting idle timeout to:', timeout, 'ms (', props.initialSettings?.idle_timeout, 'seconds from idle_settings)')
     idleTimer = setTimeout(() => {
         handleIdleTimeout()
     }, timeout)
@@ -227,46 +223,18 @@ const handleIdleTimeout = async () => {
     await handleIdleWarningAPI()
 }
 
-const handleWarningTimeout = () => {
-    // Hide the current modal
-    showWarningModal.value = false
-    
-    // If we haven't reached the third warning yet, continue with next warning
-    if (warningCount.value < 3) {
-        // Start a new idle timer for the next warning using timeout from idle_settings
-        const nextTimeout = (props.initialSettings?.idle_timeout || 5) * 1000
-        console.log('Setting next warning timeout to:', nextTimeout, 'ms (', props.initialSettings?.idle_timeout, 'seconds from idle_settings)')
-        idleTimer = setTimeout(() => {
-            handleIdleTimeout()
-        }, nextTimeout)
-        return
-    }
-    
-    // If we've reached the third warning, wait a moment for API response then logout
-    setTimeout(() => {
-        window.location.href = '/login?message=inactivity_logout'
-    }, 2000) // Wait 2 seconds for API response
-}
-
 const showWarning = () => {
     showWarningModal.value = true
     startCountdown()
 }
 
 const startCountdown = () => {
-    // Clear any existing countdown timer
-    if (countdownTimer) {
-        clearInterval(countdownTimer)
-        countdownTimer = null
-    }
-    
     countdown.value = 10
     countdownTimer = setInterval(() => {
         countdown.value--
         
         if (countdown.value <= 0) {
             clearInterval(countdownTimer)
-            countdownTimer = null
             handleWarningTimeout()
         }
     }, 1000)
@@ -317,7 +285,7 @@ const acknowledgeWarning = () => {
     showWarningModal.value = false
     
     // Reset warning count
-        warningCount.value = 0
+    warningCount.value = 0
     
     // Start new idle timer
     resetIdleTimer()
@@ -350,7 +318,7 @@ onMounted(() => {
 })
 
 onUnmounted(() => {
-            stopIdleMonitoring()
+    stopIdleMonitoring()
 })
 
 // Expose methods for parent component

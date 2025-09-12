@@ -184,4 +184,5 @@ class IdleSession extends Model
 
         return $sessions->avg('duration_seconds');
     }
+
 }

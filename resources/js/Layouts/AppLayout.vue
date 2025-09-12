@@ -46,9 +46,9 @@
             </div>
         </div>
 
-        <!-- Idle Monitoring Component -->
+        <!-- Global Idle Monitoring Component for All Pages -->
         <IdleMonitor 
-            v-if="user?.id"
+            v-if="user?.id && shouldShowIdleMonitor"
             :user-id="user.id"
             :initial-settings="initialSettings || userSettings"
             :can-control-idle-monitoring="canControlIdleMonitoring"
@@ -58,7 +58,7 @@
 </template>
 
 <script setup>
-import { ref } from 'vue'
+import { ref, computed } from 'vue'
 import { router } from '@inertiajs/vue3'
 import IdleMonitor from '@/Components/IdleMonitor.vue'
 import Sidebar from '@/Components/Organisms/Sidebar.vue'
@@ -73,6 +73,13 @@ const props = defineProps({
 
 // Sidebar state
 const sidebarOpen = ref(false)
+
+// Computed property to determine if idle monitoring should be shown
+const shouldShowIdleMonitor = computed(() => {
+    // Show idle monitoring for all authenticated users
+    // The actual monitoring will be controlled by role settings
+    return props.user?.id && props.isIdleMonitoringEnabled
+})
 
 const toggleSidebar = () => {
     sidebarOpen.value = !sidebarOpen.value
