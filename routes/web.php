@@ -61,9 +61,17 @@ Route::prefix('employee')->middleware(['auth', 'role:employee', 'log.activity'])
 
 // General routes (both admin and web guards)
 Route::middleware(['auth', 'log.activity'])->group(function () {
-    // General Dashboard (fallback)
-    Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
-    Route::get('/', [DashboardController::class, 'index'])->name('home');
+    // Home route - redirect to appropriate dashboard based on user role
+    Route::get('/', function () {
+        $user = auth()->user();
+        if ($user->hasRole('admin')) {
+            return redirect()->route('admin.dashboard');
+        } elseif ($user->hasRole('employee')) {
+            return redirect()->route('employee.dashboard');
+        }
+        // Fallback to admin dashboard if no specific role
+        return redirect()->route('admin.dashboard');
+    })->name('home');
     
     // Activities
     Route::get('/activities', [ActivityController::class, 'index'])->name('activities.index');

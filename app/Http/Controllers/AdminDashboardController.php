@@ -39,28 +39,8 @@ class AdminDashboardController extends Controller
             'completedIdleSessions' => IdleSession::whereNotNull('idle_ended_at')->count(),
         ];
         
-        // Get recent activities with more details for admin
-        $recentActivities = ActivityLog::with(['user.employee'])
-            ->latest()
-            ->limit(20)
-            ->get()
-            ->map(function ($activity) {
-                return [
-                    'id' => $activity->id,
-                    'action' => $activity->action,
-                    'subject_type' => $activity->subject_type,
-                    'subject_id' => $activity->subject_id,
-                    'user' => $activity->user ? [
-                        'name' => $activity->user->name,
-                        'email' => $activity->user->email,
-                        'employee' => $activity->user->employee,
-                    ] : null,
-                    'ip_address' => $activity->ip_address,
-                    'device' => $activity->device,
-                    'browser' => $activity->browser,
-                    'created_at' => $activity->created_at,
-                ];
-            });
+        // Get recent activities with more details for admin - filter out redundant activities
+        $recentActivities = $this->getFilteredRecentActivities();
 
         // Get CRUD operations breakdown
         $crudBreakdown = ActivityLog::selectRaw('
@@ -166,6 +146,179 @@ class AdminDashboardController extends Controller
             return "Good afternoon, Admin {$name}!";
         } else {
             return "Good evening, Admin {$name}!";
+        }
+    }
+
+    /**
+     * Get filtered recent activities with enhanced details for admin
+     */
+    private function getFilteredRecentActivities()
+    {
+        // Get activities from the last 7 days to avoid too much data
+        $activities = ActivityLog::with(['user.employee', 'user.roles'])
+            ->where('created_at', '>=', now()->subDays(7))
+            ->latest()
+            ->get();
+
+        // Filter out redundant activities
+        $filteredActivities = $this->filterRedundantActivities($activities);
+
+        return $filteredActivities->take(25)->map(function ($activity) {
+            return [
+                'id' => $activity->id,
+                'action' => $activity->action,
+                'subject_type' => $activity->subject_type,
+                'subject_id' => $activity->subject_id,
+                'user' => $activity->user ? [
+                    'name' => $activity->user->name,
+                    'email' => $activity->user->email,
+                    'employee' => $activity->user->employee,
+                    'roles' => $activity->user->roles->pluck('name')->toArray(),
+                    'department' => $activity->user->employee?->department,
+                    'job_title' => $activity->user->employee?->job_title,
+                ] : null,
+                'ip_address' => $activity->ip_address,
+                'device' => $activity->device,
+                'browser' => $activity->browser,
+                'created_at' => $activity->created_at,
+                'details' => $this->getActivityDetails($activity),
+                'importance' => $this->getActivityImportance($activity),
+            ];
+        });
+    }
+
+    /**
+     * Filter out redundant activities (consecutive similar actions by same user)
+     */
+    private function filterRedundantActivities($activities)
+    {
+        $filtered = collect();
+        $lastActivity = null;
+
+        foreach ($activities as $activity) {
+            // Skip if it's a redundant view action
+            if ($this->isRedundantActivity($activity, $lastActivity)) {
+                continue;
+            }
+
+            $filtered->push($activity);
+            $lastActivity = $activity;
+        }
+
+        return $filtered;
+    }
+
+    /**
+     * Check if an activity is redundant
+     */
+    private function isRedundantActivity($current, $last)
+    {
+        if (!$last) {
+            return false;
+        }
+
+        // Skip consecutive view actions by the same user within 5 minutes
+        if ($current->user_id === $last->user_id && 
+            $this->isViewAction($current->action) && 
+            $this->isViewAction($last->action) &&
+            $current->created_at->diffInMinutes($last->created_at) < 5) {
+            return true;
+        }
+
+        // Skip repeated admin settings views within 2 minutes
+        if ($current->user_id === $last->user_id && 
+            $current->action === 'view_admin_settings' && 
+            $last->action === 'view_admin_settings' &&
+            $current->created_at->diffInMinutes($last->created_at) < 2) {
+            return true;
+        }
+
+        return false;
+    }
+
+    /**
+     * Check if action is a view action
+     */
+    private function isViewAction($action)
+    {
+        return str_contains($action, 'view') || 
+               str_contains($action, 'read') || 
+               str_contains($action, 'index') ||
+               str_contains($action, 'show');
+    }
+
+    /**
+     * Get detailed information about the activity
+     */
+    private function getActivityDetails($activity)
+    {
+        $details = [];
+
+        // Add specific details based on action type
+        switch ($activity->action) {
+            case 'create_user':
+                $details['description'] = 'Created a new user account';
+                break;
+            case 'update_user':
+                $details['description'] = 'Updated user information';
+                break;
+            case 'delete_user':
+                $details['description'] = 'Deleted user account';
+                break;
+            case 'create_employee':
+                $details['description'] = 'Created a new employee record';
+                break;
+            case 'update_employee':
+                $details['description'] = 'Updated employee information';
+                break;
+            case 'delete_employee':
+                $details['description'] = 'Deleted employee record';
+                break;
+            case 'update_idle_timeout':
+                $details['description'] = 'Modified idle timeout settings';
+                break;
+            case 'admin_login':
+                $details['description'] = 'Admin user logged in';
+                break;
+            case 'employee_login':
+                $details['description'] = 'Employee logged in';
+                break;
+            case 'logged_out':
+                $details['description'] = 'User logged out';
+                break;
+            default:
+                $details['description'] = ucfirst(str_replace('_', ' ', $activity->action));
+        }
+
+        // Add subject information if available
+        if ($activity->subject_type && $activity->subject_id) {
+            $modelName = class_basename($activity->subject_type);
+            $details['target'] = "{$modelName} #{$activity->subject_id}";
+        }
+
+        return $details;
+    }
+
+    /**
+     * Determine activity importance level
+     */
+    private function getActivityImportance($activity)
+    {
+        $highImportance = [
+            'delete_user', 'delete_employee', 'create_user', 'create_employee',
+            'admin_login', 'employee_login', 'logged_out', 'update_idle_timeout'
+        ];
+
+        $mediumImportance = [
+            'update_user', 'update_employee', 'view_admin_settings'
+        ];
+
+        if (in_array($activity->action, $highImportance)) {
+            return 'high';
+        } elseif (in_array($activity->action, $mediumImportance)) {
+            return 'medium';
+        } else {
+            return 'low';
         }
     }
 }

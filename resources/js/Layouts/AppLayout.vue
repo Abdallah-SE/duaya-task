@@ -71,8 +71,8 @@ const props = defineProps({
     isIdleMonitoringEnabled: Boolean
 })
 
-// Sidebar state
-const sidebarOpen = ref(false)
+// Sidebar state - open by default on desktop, closed on mobile
+const sidebarOpen = ref(true)
 
 // Computed property to determine if idle monitoring should be shown
 const shouldShowIdleMonitor = computed(() => {

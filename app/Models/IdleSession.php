@@ -6,9 +6,11 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\Log;
+use App\Traits\TracksUserActivity;
 
 class IdleSession extends Model
 {
+    use TracksUserActivity;
     /**
      * The table associated with the model.
      */

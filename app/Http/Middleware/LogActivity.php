@@ -20,7 +20,7 @@ class LogActivity
         $response = $next($request);
         
         // Only log for authenticated users and skip certain routes
-        if ($request->user() && $this->shouldLog($request)) {
+        if ($request->user() && $this->shouldLog($request) && $this->isSuccessfulResponse($response)) {
             $this->logRequest($request, $response);
         }
         
@@ -35,6 +35,9 @@ class LogActivity
             'logout',
             'sanctum.csrf-cookie',
             'ignition.*',
+            'telescope.*',
+            'horizon.*',
+            'api.*', // Skip API routes if not needed
         ];
         
         $routeName = $request->route()?->getName();
@@ -50,7 +53,33 @@ class LogActivity
             }
         }
         
+        // Skip if it's a GET request to static assets
+        if ($request->isMethod('GET') && $this->isStaticAsset($request)) {
+            return false;
+        }
+        
         return true;
+    }
+    
+    private function isStaticAsset(Request $request): bool
+    {
+        $path = $request->path();
+        return str_starts_with($path, 'css/') || 
+               str_starts_with($path, 'js/') || 
+               str_starts_with($path, 'images/') || 
+               str_starts_with($path, 'fonts/') ||
+               str_ends_with($path, '.css') ||
+               str_ends_with($path, '.js') ||
+               str_ends_with($path, '.png') ||
+               str_ends_with($path, '.jpg') ||
+               str_ends_with($path, '.jpeg') ||
+               str_ends_with($path, '.gif') ||
+               str_ends_with($path, '.svg');
+    }
+    
+    private function isSuccessfulResponse(Response $response): bool
+    {
+        return $response->getStatusCode() >= 200 && $response->getStatusCode() < 300;
     }
     
     private function logRequest(Request $request, Response $response)

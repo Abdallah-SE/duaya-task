@@ -218,43 +218,110 @@
             <!-- Recent Activities -->
             <div class="bg-white shadow overflow-hidden sm:rounded-md">
                 <div class="px-4 py-5 sm:px-6">
-                    <h3 class="text-lg leading-6 font-medium text-gray-900">Recent Activity Logs</h3>
-                    <p class="mt-1 max-w-2xl text-sm text-gray-500">Latest CRUD operations, login/logout events, and important actions with detailed tracking</p>
+                    <div class="flex items-center justify-between">
+                        <div>
+                            <h3 class="text-lg leading-6 font-medium text-gray-900">Recent Activity Logs</h3>
+                            <p class="mt-1 max-w-2xl text-sm text-gray-500">Filtered CRUD operations, login/logout events, and important actions with enhanced tracking</p>
+                        </div>
+                        <div class="flex space-x-2">
+                            <select v-model="activityFilter" class="text-sm border-gray-300 rounded-md focus:ring-indigo-500 focus:border-indigo-500">
+                                <option value="all">All Activities</option>
+                                <option value="high">High Priority</option>
+                                <option value="medium">Medium Priority</option>
+                                <option value="low">Low Priority</option>
+                                <option value="crud">CRUD Operations</option>
+                                <option value="auth">Authentication</option>
+                                <option value="settings">Settings Changes</option>
+                            </select>
+                        </div>
+                    </div>
                 </div>
-                <ul class="divide-y divide-gray-200">
-                    <li v-for="activity in recentActivities" :key="activity.id" class="px-4 py-4 sm:px-6">
-                        <div class="flex items-center justify-between">
-                            <div class="flex items-center">
-                                <div class="flex-shrink-0">
-                                    <div class="h-8 w-8 rounded-full flex items-center justify-center" :class="getActivityIconClass(activity.action)">
-                                        <svg class="h-4 w-4" :class="getActivityIconColor(activity.action)" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" :d="getActivityIconPath(activity.action)" />
-                                        </svg>
-                                    </div>
-                                </div>
-                                <div class="ml-4">
-                                    <div class="text-sm font-medium text-gray-900">
-                                        {{ activity.user?.name || 'Unknown User' }}
-                                        <span v-if="activity.user?.employee" class="text-xs text-gray-500">
-                                            ({{ activity.user.employee.job_title }})
+                <div class="space-y-4">
+                    <div v-for="group in filteredActivities" :key="`${group.user?.name}-${group.date}`" class="border border-gray-200 rounded-lg">
+                        <!-- Group Header -->
+                        <div class="bg-gray-50 px-4 py-3 border-b border-gray-200">
+                            <div class="flex items-center justify-between">
+                                <div class="flex items-center space-x-3">
+                                    <div class="h-8 w-8 rounded-full bg-indigo-100 flex items-center justify-center">
+                                        <span class="text-sm font-medium text-indigo-600">
+                                            {{ group.user?.name?.charAt(0)?.toUpperCase() || '?' }}
                                         </span>
                                     </div>
-                                    <div class="text-sm text-gray-500">
-                                        {{ formatActivityAction(activity.action) }}
-                                        <span v-if="activity.subject_type"> • {{ formatSubjectType(activity.subject_type) }}</span>
-                                        <span v-if="activity.subject_id"> • ID: {{ activity.subject_id }}</span>
+                                    <div>
+                                        <div class="text-sm font-medium text-gray-900">
+                                            {{ group.user?.name || 'Unknown User' }}
+                                            <span v-if="group.user?.roles?.length" class="ml-2">
+                                                <span v-for="role in group.user.roles" :key="role" 
+                                                      class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-blue-100 text-blue-800 mr-1">
+                                                    {{ role }}
+                                                </span>
+                                            </span>
+                                        </div>
+                                        <div class="text-xs text-gray-500">
+                                            <span v-if="group.user?.department">{{ group.user.department }}</span>
+                                            <span v-if="group.user?.department && group.user?.job_title"> • </span>
+                                            <span v-if="group.user?.job_title">{{ group.user.job_title }}</span>
+                                        </div>
                                     </div>
-                                    <div class="text-xs text-gray-400">
-                                        {{ activity.device }} • {{ activity.browser }} • {{ activity.ip_address }}
+                                </div>
+                                <div class="text-right">
+                                    <div class="text-sm font-medium text-gray-900">{{ group.totalCount }} activities</div>
+                                    <div class="text-xs text-gray-500">{{ formatDate(group.date) }}</div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- Group Activities -->
+                        <div class="divide-y divide-gray-200">
+                            <div v-for="(activity, index) in group.activities.slice(0, 5)" :key="activity.id" 
+                                 class="px-4 py-3 hover:bg-gray-50">
+                                <div class="flex items-start justify-between">
+                                    <div class="flex items-start">
+                                        <div class="flex-shrink-0">
+                                            <div class="h-6 w-6 rounded-full flex items-center justify-center" :class="getActivityIconClass(activity.action)">
+                                                <svg class="h-3 w-3" :class="getActivityIconColor(activity.action)" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" :d="getActivityIconPath(activity.action)" />
+                                                </svg>
+                                            </div>
+                                        </div>
+                                        <div class="ml-3 flex-1">
+                                            <div class="flex items-center space-x-2">
+                                                <div class="text-sm text-gray-900">
+                                                    {{ activity.details?.description || formatActivityAction(activity.action) }}
+                                                </div>
+                                                <div v-if="activity.importance" 
+                                                     :class="getImportanceBadgeClass(activity.importance)"
+                                                     class="inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium">
+                                                    {{ activity.importance.toUpperCase() }}
+                                                </div>
+                                            </div>
+                                            <div v-if="activity.details?.target" class="text-xs text-gray-500 mt-1">
+                                                Target: {{ activity.details.target }}
+                                            </div>
+                                            <div class="mt-1 flex items-center space-x-3 text-xs text-gray-400">
+                                                <span>{{ activity.device }}</span>
+                                                <span>{{ activity.browser }}</span>
+                                                <span>{{ activity.ip_address }}</span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="text-right">
+                                        <div class="text-xs text-gray-500">
+                                            {{ formatTimeAgo(activity.created_at) }}
+                                        </div>
                                     </div>
                                 </div>
                             </div>
-                            <div class="text-sm text-gray-500">
-                                {{ formatDate(activity.created_at) }}
+                            
+                            <!-- Show more indicator if there are more than 5 activities -->
+                            <div v-if="group.activities.length > 5" class="px-4 py-2 bg-gray-50 text-center">
+                                <span class="text-xs text-gray-500">
+                                    +{{ group.activities.length - 5 }} more activities
+                                </span>
                             </div>
                         </div>
-                    </li>
-                </ul>
+                    </div>
+                </div>
             </div>
 
             <!-- All Penalties -->
@@ -382,7 +449,7 @@
 </template>
 
 <script setup>
-import { ref } from 'vue'
+import { ref, computed } from 'vue'
 import { router, Link } from '@inertiajs/vue3'
 import AppLayout from '@/Layouts/AppLayout.vue'
 
@@ -400,12 +467,100 @@ const props = defineProps({
     greeting: String
 })
 
+const activityFilter = ref('all')
+
 const refreshData = () => {
     router.reload()
 }
 
+// Filter activities based on selected filter
+const filteredActivities = computed(() => {
+    let activities = props.recentActivities
+    
+    // Apply filter
+    if (activityFilter.value !== 'all') {
+        activities = activities.filter(activity => {
+            switch (activityFilter.value) {
+                case 'high':
+                    return activity.importance === 'high'
+                case 'medium':
+                    return activity.importance === 'medium'
+                case 'low':
+                    return activity.importance === 'low'
+                case 'crud':
+                    return ['create', 'read', 'update', 'delete'].some(op => 
+                        activity.action.toLowerCase().includes(op)
+                    )
+                case 'auth':
+                    return ['login', 'logout', 'admin_login', 'employee_login'].some(auth => 
+                        activity.action.toLowerCase().includes(auth)
+                    )
+                case 'settings':
+                    return ['settings', 'idle', 'timeout', 'role'].some(setting => 
+                        activity.action.toLowerCase().includes(setting)
+                    )
+                default:
+                    return true
+            }
+        })
+    }
+    
+    // Group similar activities to reduce clutter
+    return groupSimilarActivities(activities)
+})
+
+// Group similar activities by user and time period
+const groupSimilarActivities = (activities) => {
+    const grouped = []
+    const groups = new Map()
+    
+    activities.forEach(activity => {
+        const key = `${activity.user?.name || 'Unknown'}-${activity.created_at.split('T')[0]}`
+        
+        if (!groups.has(key)) {
+            groups.set(key, {
+                user: activity.user,
+                date: activity.created_at.split('T')[0],
+                activities: [],
+                totalCount: 0
+            })
+        }
+        
+        const group = groups.get(key)
+        group.activities.push(activity)
+        group.totalCount++
+    })
+    
+    // Convert groups to array and sort by most recent activity
+    groups.forEach(group => {
+        group.activities.sort((a, b) => new Date(b.created_at) - new Date(a.created_at))
+        grouped.push(group)
+    })
+    
+    return grouped.sort((a, b) => new Date(b.activities[0].created_at) - new Date(a.activities[0].created_at))
+}
+
 const formatDate = (dateString) => {
     return new Date(dateString).toLocaleString()
+}
+
+const formatTimeAgo = (dateString) => {
+    const now = new Date()
+    const date = new Date(dateString)
+    const diffInSeconds = Math.floor((now - date) / 1000)
+    
+    if (diffInSeconds < 60) {
+        return 'Just now'
+    } else if (diffInSeconds < 3600) {
+        const minutes = Math.floor(diffInSeconds / 60)
+        return `${minutes}m ago`
+    } else if (diffInSeconds < 86400) {
+        const hours = Math.floor(diffInSeconds / 3600)
+        return `${hours}h ago`
+    } else {
+        const days = Math.floor(diffInSeconds / 86400)
+        return `${days}d ago`
+    }
 }
 
 const formatDuration = (duration) => {
@@ -414,6 +569,16 @@ const formatDuration = (duration) => {
     const minutes = Math.floor((duration % 3600) / 60)
     const seconds = Math.floor(duration % 60)
     return `${hours}h ${minutes}m ${seconds}s`
+}
+
+// Get importance badge styling
+const getImportanceBadgeClass = (importance) => {
+    const classes = {
+        'high': 'bg-red-100 text-red-800',
+        'medium': 'bg-yellow-100 text-yellow-800',
+        'low': 'bg-gray-100 text-gray-800'
+    }
+    return classes[importance] || 'bg-gray-100 text-gray-800'
 }
 
 // Helper functions for CRUD operations display
