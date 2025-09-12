@@ -141,92 +141,137 @@ php artisan serve
 
 ### 🚀 Getting Started
 
-#### 1. Login to the System
-```bash
-# Access the application
-http://localhost:8000
+#### 1. Authentication System
+The system has **role-based authentication** with separate login flows:
 
-# Login as Admin
-Email: admin@duaya.com
-Password: password
+**Admin Login:**
+- URL: `http://localhost:8000/admin/login`
+- Email: `admin@duaya.com`
+- Password: `password`
+- Redirects to: `/admin/dashboard`
 
-# Login as Employee
-Email: employee1@duaya.com
-Password: password
-```
+**Employee Login:**
+- URL: `http://localhost:8000/employee/login`
+- Email: `employee1@duaya.com` (or employee2, employee3)
+- Password: `password`
+- Redirects to: `/employee/dashboard`
 
-#### 2. Admin Dashboard Overview
-- **Activity Statistics**: View total activities, CRUD operations, login/logout events
-- **Idle Monitoring**: See idle sessions, warnings, and penalties
-- **User Management**: Manage users and employees
-- **Settings**: Configure idle timeouts and monitoring preferences
+**General Login:**
+- URL: `http://localhost:8000/login`
+- Select role (admin/employee) + credentials
+- Automatic redirect based on role
 
-#### 3. Employee Dashboard
-- **Personal Activity Log**: View your own activities
-- **Idle Session History**: Track your idle sessions
-- **Settings**: Configure personal idle preferences
+#### 2. Admin Dashboard Features
+**Main Statistics Cards:**
+- **Activity Logs**: Total activities + today's count
+- **CRUD Operations**: Create, Read, Update, Delete counts
+- **Idle Sessions**: Total sessions + active sessions
+- **Penalties**: Total penalties + today's penalties
+
+**Recent Activities Feed:**
+- Real-time activity stream with user details
+- Color-coded action types (create=green, update=yellow, delete=red)
+- User information including department and job title
+- IP address and device information
+
+**Penalty System Display:**
+- List of recent penalties with user names
+- Penalty reasons and counts
+- Date stamps for each penalty
+
+**Navigation Options:**
+- Dashboard (main view)
+- Settings (idle monitoring configuration)
+
+#### 3. Employee Dashboard Features
+**Personal Statistics:**
+- **Today's Activities**: Your daily activity count
+- **Penalties**: Your personal penalty count
+- **Idle Sessions**: Your idle session history
+
+**Personal Information Display:**
+- Job title and department
+- Greeting message based on time of day
+- Refresh button for real-time updates
+
+**Navigation Options:**
+- Dashboard (personal view)
+- Users (manage other users)
+- Employees (manage employee records)
+- Settings (personal preferences)
+
+#### 4. Sidebar Navigation
+**For Admin Users:**
+- Dashboard
+- Settings (admin settings)
+- Logout
+
+**For Employee Users:**
+- Dashboard
+- Users (user management)
+- Employees (employee management)
+- Settings (personal settings)
+- Logout
+
+**Sidebar Features:**
+- User information display
+- Role-based navigation
+- Mobile-responsive design
+- Active page highlighting
 
 ### 🔍 How to Use Activity Logging
 
 #### Automatic Activity Logging
-The system automatically logs activities through middleware:
+The system automatically logs activities through the `LogActivity` middleware:
 
 ```php
 // All these actions are automatically logged:
-- User login/logout
+- User login/logout (with role selection)
 - CRUD operations on users/employees
-- Dashboard views
+- Dashboard views and navigation
 - Settings changes
-- File uploads/downloads
-```
-
-#### Manual Activity Logging
-```php
-// In your controllers, log specific activities
-ActivityLog::logActivity(
-    userId: auth()->id(),
-    action: 'approve_request',
-    subjectType: 'App\Models\Request',
-    subjectId: $request->id,
-    ipAddress: request()->ip(),
-    device: 'Desktop',
-    browser: 'Chrome'
-);
+- Idle monitoring events
 ```
 
 #### View Activity Logs
-1. Go to **Activities** page
-2. Filter by user, action type, or date range
-3. View detailed activity information including IP, device, and browser
+**In Admin Dashboard:**
+- **Recent Activities Feed**: Shows last 25 activities with user details
+- **Activity Statistics**: Total counts and breakdowns
+- **User Information**: Name, email, department, job title
+- **Device Details**: IP address, device type, browser
+
+**Activity Display Features:**
+- Color-coded action types (create=green, update=yellow, delete=red, login=indigo)
+- Time stamps with relative time (e.g., "2h ago", "1d ago")
+- User role and department information
+- Filtered to show only relevant activities (redundant views removed)
 
 ### ⏰ How to Use Idle Monitoring
 
 #### For Users (Automatic)
-1. **Login** to the system
-2. **Idle monitoring starts automatically** when you're logged in
-3. **Stay active** by moving mouse or typing
+1. **Login** to the system (admin or employee)
+2. **Idle monitoring starts automatically** via the `IdleMonitor` component
+3. **Stay active** by moving mouse, typing, scrolling, or touching (mobile)
 4. **If you become idle**:
-   - After 5 seconds: **Alert popup** appears
-   - Click "I'm Still Here" to dismiss
-   - If idle again: **Warning counter** increases
+   - After 5 seconds: **Alert popup** appears with countdown
+   - Click "I'm Still Here" to dismiss and reset
+   - If idle again: **Warning counter** increases (2nd warning)
    - Third time: **Automatic logout** + **Penalty applied**
 
-#### For Admins (Configuration)
-1. Go to **Admin Dashboard** → **Settings**
-2. **Configure Global Settings**:
-   - Set idle timeout (default: 5 seconds)
-   - Set maximum warnings (default: 3)
-3. **Configure Role Settings**:
-   - Enable/disable monitoring per role
-   - Set different timeouts for different roles
+#### Idle Monitor Component Features
+- **Real-time countdown timer** (10 seconds to respond)
+- **Progressive warning system** (Alert → Warning → Auto Logout)
+- **Visual progress bars** for warning progression
+- **Multiple event listeners** (mousemove, keydown, scroll, click, touchstart)
+- **Mobile-friendly** touch event support
 
 #### Idle Monitoring Flow
 ```
-User Activity → 5s Idle → Alert Popup → User Response
+User Activity → 5s Idle → Alert Popup (10s countdown) → User Response
                      ↓
-                If Still Idle → Warning Counter → User Response
+                If Still Idle → Warning Counter (2nd) → User Response
                      ↓
-                If Still Idle → Auto Logout + Penalty
+                If Still Idle → Auto Logout + Penalty (3rd)
 ```
 
 ### 🎯 How to Use Penalty System
@@ -235,62 +280,69 @@ User Activity → 5s Idle → Alert Popup → User Response
 - Applied when user reaches 3rd idle warning
 - Reason: "Auto logout due to inactivity"
 - Count: 1 penalty per occurrence
-
-#### Manual Penalties (Admin Only)
-1. Go to **Admin Dashboard** → **Activities**
-2. Click **Apply Penalty** for specific user
-3. Enter reason and penalty count
-4. Penalty is recorded in the system
+- Automatically logged in the system
 
 #### View Penalties
-- **Admin Dashboard**: See all penalties across all users
-- **User Profile**: See individual user's penalty history
-- **Statistics**: View penalty trends and counts
+**In Admin Dashboard:**
+- **Penalty System Section**: Shows recent penalties (last 5)
+- **User Information**: Name and penalty details
+- **Penalty Details**: Reason, count, and date
+- **Statistics**: Total penalties and today's count
+
+**In Employee Dashboard:**
+- **Personal Penalties**: Your own penalty count
+- **Penalty History**: Your penalty record
 
 ### ⚙️ How to Configure Settings
 
-#### Global Settings (Admin Only)
+#### Admin Settings (Admin Only)
 1. Navigate to **Admin Dashboard** → **Settings**
-2. **Idle Timeout**: Set default idle time (5-60 seconds)
-3. **Max Warnings**: Set warning threshold (1-10 warnings)
+2. **Global Idle Settings**:
+   - Idle timeout (default: 5 seconds)
+   - Maximum warnings (default: 3)
+3. **Role-Based Settings**:
+   - Enable/disable monitoring per role
+   - Custom timeouts for different roles
 4. **Save Changes**: Apply to all users
 
-#### Role-Based Settings (Admin Only)
-1. Go to **Settings** → **Role Settings**
-2. **Select Role**: Choose admin or employee
-3. **Enable/Disable**: Turn monitoring on/off per role
-4. **Custom Timeout**: Set different timeouts per role
-5. **Save**: Apply role-specific settings
-
-#### User Settings (Self-Management)
-1. Go to **Settings** page
+#### Employee Settings (Self-Management)
+1. Go to **Settings** page (from sidebar)
 2. **View Current Settings**: See your idle configuration
-3. **Request Changes**: Contact admin for modifications
+3. **Personal Preferences**: View your monitoring status
+4. **Request Changes**: Contact admin for modifications
 
 ### 📊 How to View Reports
 
 #### Admin Dashboard Reports
-1. **Activity Statistics**:
-   - Total activities today/this week
-   - CRUD operations breakdown
-   - Login/logout events
-   - Most active users
+**Statistics Cards:**
+- **Activity Logs**: Total activities + today's count
+- **CRUD Operations**: Create, Read, Update, Delete counts
+- **Idle Sessions**: Total sessions + active sessions
+- **Penalties**: Total penalties + today's penalties
 
-2. **Idle Monitoring Reports**:
-   - Total idle sessions
-   - Average idle time per user
-   - Warning statistics
-   - Penalty counts
+**Recent Activities Feed:**
+- Last 25 activities with user details
+- Color-coded action types
+- User information (name, department, job title)
+- Device and IP information
+- Time stamps with relative time
 
-3. **User Activity Breakdown**:
-   - Activities per employee
-   - Recent activity feed
-   - Device/browser statistics
+**Penalty System Display:**
+- Recent penalties (last 5)
+- User names and penalty details
+- Penalty reasons and counts
+- Date stamps
 
-#### Employee Reports
-1. **Personal Activity Log**: Your own activities
-2. **Idle Session History**: Your idle patterns
-3. **Penalty History**: Your penalty record
+#### Employee Dashboard Reports
+**Personal Statistics:**
+- **Today's Activities**: Your daily activity count
+- **Penalties**: Your personal penalty count
+- **Idle Sessions**: Your idle session history
+
+**Personal Information:**
+- Job title and department
+- Greeting message based on time
+- Refresh button for real-time updates
 
 ### 🔧 Developer Usage
 
