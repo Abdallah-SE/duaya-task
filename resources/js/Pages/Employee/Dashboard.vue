@@ -14,7 +14,7 @@
                         {{ greeting }}
                     </h2>
                     <p class="mt-1 text-sm text-gray-500">
-                        Welcome to your personal dashboard - Track your activities and performance
+                        Track your activities, monitor idle time, and view penalties - User Activity Logs & Inactivity Monitoring
                     </p>
                     <div v-if="user.employee" class="mt-2 text-sm text-gray-600">
                         <span class="font-medium">{{ user.employee.job_title }}</span> • 
