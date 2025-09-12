@@ -33,66 +33,58 @@
                             These settings apply to all users as default values
                         </p>
                         
-                        <form @submit.prevent="updateGlobalSettings" class="space-y-6">
-                            <!-- Idle Timeout -->
-                            <div>
-                                <label for="idle_timeout" class="block text-sm font-medium text-gray-700">
-                                    Idle Timeout (seconds)
-                                </label>
-                                <div class="mt-1">
-                                    <select
-                                        id="idle_timeout"
-                                        v-model="globalForm.idle_timeout"
-                                        class="shadow-sm focus:ring-indigo-500 focus:border-indigo-500 block w-full sm:text-sm border-gray-300 rounded-md"
-                                    >
-                                        <option value="5">5 seconds</option>
-                                        <option value="10">10 seconds</option>
-                                        <option value="30">30 seconds</option>
-                                        <option value="60">1 minute</option>
-                                        <option value="120">2 minutes</option>
-                                        <option value="300">5 minutes</option>
-                                    </select>
+                        <!-- Idle Timeout Input with Save Button -->
+                        <div class="max-w-md">
+                            <label for="idle-timeout" class="block text-sm font-medium text-gray-700 mb-2">
+                                Idle Timeout (seconds)
+                            </label>
+                            <div class="flex space-x-3">
+                                <div class="flex-1">
+                                    <input
+                                        :id="'idle-timeout'"
+                                        v-model="idleTimeoutInput"
+                                        type="number"
+                                        min="1"
+                                        max="300"
+                                        step="1"
+                                        :disabled="timeoutUpdating"
+                                        placeholder="Enter timeout in seconds"
+                                        class="block w-full px-4 py-3 text-lg font-semibold text-gray-900 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 disabled:bg-gray-100 disabled:text-gray-400 disabled:cursor-not-allowed disabled:border-gray-200"
+                                    />
                                 </div>
-                                <p class="mt-2 text-sm text-gray-500">
-                                    How long to wait before showing the first inactivity alert
-                                </p>
-                            </div>
-
-                            <!-- Max Warnings -->
-                            <div>
-                                <label for="max_idle_warnings" class="block text-sm font-medium text-gray-700">
-                                    Maximum Warnings
-                                </label>
-                                <div class="mt-1">
-                                    <select
-                                        id="max_idle_warnings"
-                                        v-model="globalForm.max_idle_warnings"
-                                        class="shadow-sm focus:ring-indigo-500 focus:border-indigo-500 block w-full sm:text-sm border-gray-300 rounded-md"
+                                <div class="flex-shrink-0">
+                                    <button
+                                        @click="saveTimeout"
+                                        :disabled="timeoutUpdating || !isTimeoutChanged"
+                                        class="inline-flex items-center px-6 py-3 border border-transparent text-base font-medium rounded-lg text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed disabled:bg-gray-400"
                                     >
-                                        <option value="1">1 warning</option>
-                                        <option value="2">2 warnings</option>
-                                        <option value="3">3 warnings (recommended)</option>
-                                        <option value="5">5 warnings</option>
-                                        <option value="10">10 warnings</option>
-                                    </select>
+                                        <svg v-if="timeoutUpdating" class="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                                            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                        </svg>
+                                        <svg v-else class="-ml-1 mr-2 h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
+                                        </svg>
+                                        {{ timeoutUpdating ? 'Saving...' : 'Save' }}
+                                    </button>
                                 </div>
-                                <p class="mt-2 text-sm text-gray-500">
-                                    Number of warnings before automatic logout
+                            </div>
+                            <div class="mt-2 flex items-center justify-between">
+                                <p class="text-sm text-gray-500">
+                                    <span v-if="timeoutUpdating">Saving timeout setting...</span>
+                                    <span v-else>How long to wait before showing the first inactivity alert</span>
                                 </p>
+                                <div class="flex items-center space-x-2" v-if="timeoutUpdating">
+                                    <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800">
+                                        <svg class="animate-spin w-3 h-3 mr-1" fill="none" viewBox="0 0 24 24">
+                                            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                                            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                        </svg>
+                                        Saving...
+                                    </span>
+                                </div>
                             </div>
-
-                            <!-- Submit Button -->
-                            <div class="flex justify-end">
-                                <button
-                                    type="submit"
-                                    :disabled="processing"
-                                    class="inline-flex justify-center py-2 px-4 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:opacity-50"
-                                >
-                                    <span v-if="processing">Saving...</span>
-                                    <span v-else>Save Global Settings</span>
-                                </button>
-                            </div>
-                        </form>
+                        </div>
                     </div>
                 </div>
 
@@ -164,7 +156,7 @@
 </template>
 
 <script setup>
-import { ref, reactive, onMounted } from 'vue'
+import { ref, reactive, computed, onMounted } from 'vue'
 import { router } from '@inertiajs/vue3'
 import AppLayout from '@/Layouts/AppLayout.vue'
 import { useToastNotifications } from '@/Composables/useToast.js'
@@ -177,14 +169,17 @@ const props = defineProps({
 })
 
 const processing = ref(false)
+const timeoutUpdating = ref(false)
 
 // Toast notifications
 const { showSuccess, showError } = useToastNotifications()
 
-// Global settings form
-const globalForm = reactive({
-    idle_timeout: props.globalSettings.idle_timeout,
-    max_idle_warnings: props.globalSettings.max_idle_warnings,
+// Idle timeout input
+const idleTimeoutInput = ref(props.globalSettings.idle_timeout)
+
+// Computed property to check if timeout has changed
+const isTimeoutChanged = computed(() => {
+    return parseInt(idleTimeoutInput.value) !== props.globalSettings.idle_timeout
 })
 
 // Role settings form
@@ -192,15 +187,54 @@ const roleForm = reactive({
     role_settings: { ...props.roleSettings }
 })
 
-const updateGlobalSettings = () => {
-    processing.value = true
+// Save timeout function with promise
+const saveTimeout = async () => {
+    const newTimeout = parseInt(idleTimeoutInput.value)
     
-    router.put('/admin/settings/global', globalForm, {
-        onFinish: () => {
-            processing.value = false
-        }
-    })
+    // Validate input
+    if (isNaN(newTimeout) || newTimeout < 1 || newTimeout > 300) {
+        showError('Idle timeout must be between 1 and 300 seconds.')
+        idleTimeoutInput.value = props.globalSettings.idle_timeout
+        return
+    }
+    
+    // Don't update if value hasn't changed
+    if (newTimeout === props.globalSettings.idle_timeout) {
+        return
+    }
+    
+    // Set loading state
+    timeoutUpdating.value = true
+    
+    try {
+        // Create a promise that resolves when the Inertia request completes
+        await new Promise((resolve, reject) => {
+            router.patch('/admin/settings/global/timeout', {
+                idle_timeout: newTimeout
+            }, {
+                onSuccess: () => {
+                    showSuccess(`Idle timeout updated to ${newTimeout} seconds`)
+                    // Update the global settings reference
+                    props.globalSettings.idle_timeout = newTimeout
+                    resolve()
+                },
+                onError: (errors) => {
+                    console.error('Failed to update idle timeout:', errors)
+                    showError('Failed to update idle timeout. Please try again.')
+                    // Reset to original value
+                    idleTimeoutInput.value = props.globalSettings.idle_timeout
+                    reject(errors)
+                }
+            })
+        })
+    } catch (error) {
+        console.error('Save timeout error:', error)
+    } finally {
+        // Always re-enable the input
+        timeoutUpdating.value = false
+    }
 }
+
 
 const updateRoleSetting = (role) => {
     processing.value = true

@@ -68,8 +68,9 @@
             Dashboard
           </Link>
 
-          <!-- Users Management -->
-          <Link :href="usersRoute" 
+          <!-- Users Management - Only show for non-admin users -->
+          <Link v-if="!user?.has_admin_role" 
+                :href="usersRoute" 
                 :class="[
                   'group flex items-center px-3 py-2 text-sm font-medium rounded-md transition-colors duration-200',
                   isActiveRoute(usersRoute) 
@@ -82,8 +83,9 @@
             Users
           </Link>
 
-          <!-- Employees Management -->
-          <Link :href="employeesRoute" 
+          <!-- Employees Management - Only show for non-admin users -->
+          <Link v-if="!user?.has_admin_role" 
+                :href="employeesRoute" 
                 :class="[
                   'group flex items-center px-3 py-2 text-sm font-medium rounded-md transition-colors duration-200',
                   isActiveRoute(employeesRoute) 

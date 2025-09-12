@@ -41,6 +41,7 @@ Route::prefix('admin')->middleware(['auth', 'role:admin', 'log.activity'])->grou
     // Admin Settings Routes
     Route::get('/settings', [AdminSettingsController::class, 'index'])->name('admin.settings');
     Route::put('/settings/global', [AdminSettingsController::class, 'updateGlobalSettings'])->name('admin.settings.global');
+    Route::patch('/settings/global/timeout', [AdminSettingsController::class, 'updateTimeout'])->name('admin.settings.global.timeout');
     Route::put('/settings/roles', [AdminSettingsController::class, 'updateRoleSettings'])->name('admin.settings.roles');
     Route::patch('/settings/roles/toggle', [AdminSettingsController::class, 'toggleRoleMonitoring'])->name('admin.settings.roles.toggle');
     Route::post('/settings/reset', [AdminSettingsController::class, 'resetToDefaults'])->name('admin.settings.reset');
@@ -77,6 +78,7 @@ Route::middleware(['auth', 'log.activity'])->group(function () {
     // Role settings management (admin only)
     Route::put('/settings/roles', [SettingsController::class, 'updateRoleSettings'])->name('settings.roles');
     Route::patch('/settings/roles/toggle', [SettingsController::class, 'toggleRoleMonitoring'])->name('settings.roles.toggle');
+    Route::patch('/settings/global/timeout', [SettingsController::class, 'updateTimeout'])->name('settings.global.timeout');
     
     // User monitoring status check
     Route::get('/monitoring-status', [SettingsController::class, 'getUserMonitoringStatus'])->name('monitoring.status');

@@ -191,9 +191,10 @@ const handleIdleWarningAPI = async () => {
         const data = await response.json()
         console.log('✅ API call successful:', data)
         
-        // Store session ID for later use
+        // Store new session ID for this warning (each warning creates a new session)
         if (data.session_id) {
             currentSessionId = data.session_id
+            console.log('📝 New idle session created for warning', warningCount.value, 'with ID:', currentSessionId)
         }
         
         // Only logout if this is the third warning and logout is required
@@ -237,7 +238,7 @@ const resetIdleTimer = () => {
         return // Don't reset the timer if modal is showing
     }
     
-    // End current idle session if exists
+    // End current idle session if exists (user became active)
     if (currentSessionId) {
         endIdleSession()
     }
@@ -245,6 +246,7 @@ const resetIdleTimer = () => {
     // Reset warning count when user is active
     if (warningCount.value > 0) {
         warningCount.value = 0
+        console.log('🔄 User became active - reset warning count to 0')
     }
     
     // Start new idle timer

@@ -96,6 +96,42 @@ class AdminSettingsController extends Controller
     }
 
     /**
+     * Update global idle timeout (Admin only)
+     */
+    public function updateTimeout(Request $request)
+    {
+        $request->validate([
+            'idle_timeout' => 'required|integer|min:1|max:300',
+        ]);
+
+        // Check web guard for admin user
+        $user = Auth::user();
+        
+        if (!$user || !$user->hasRole('admin')) {
+            return response()->json(['error' => 'Admin access required'], 403);
+        }
+
+        // Update global settings (only timeout, keep max_warnings as default)
+        $settings = IdleSetting::updateDefault(
+            $request->idle_timeout,
+            2 // Keep max_warnings as 2 (fixed value)
+        );
+
+        // Log admin activity
+        ActivityLog::logActivity(
+            userId: $user->id,
+            action: 'update_idle_timeout',
+            subjectType: 'App\Models\IdleSetting',
+            subjectId: $settings->id,
+            ipAddress: $request->ip(),
+            device: $this->getDeviceInfo($request),
+            browser: $this->getBrowserInfo($request)
+        );
+
+        return redirect()->back()->with('success', 'Idle timeout updated successfully.');
+    }
+
+    /**
      * Update role-based idle monitoring settings
      */
     public function updateRoleSettings(Request $request)

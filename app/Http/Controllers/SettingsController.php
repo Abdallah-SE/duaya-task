@@ -145,6 +145,42 @@ class SettingsController extends Controller
     }
 
     /**
+     * Update global idle timeout (Admin only)
+     */
+    public function updateTimeout(Request $request)
+    {
+        $user = Auth::guard('web')->user();
+        
+        // Only admin guard users can update settings
+        if (!Auth::guard('admin')->check()) {
+            return response()->json(['error' => 'Admin access required'], 403);
+        }
+        
+        $request->validate([
+            'idle_timeout' => 'required|integer|min:1|max:300',
+        ]);
+        
+        // Update global settings (only timeout, keep max_warnings as default)
+        $settings = IdleSetting::updateDefault(
+            $request->idle_timeout,
+            2 // Keep max_warnings as 2 (fixed value)
+        );
+        
+        // Log activity
+        ActivityLog::logActivity(
+            userId: $user->id,
+            action: 'update_idle_timeout',
+            subjectType: 'App\Models\IdleSetting',
+            subjectId: $settings->id,
+            ipAddress: $request->ip(),
+            device: $this->getDeviceInfo($request),
+            browser: $this->getBrowserInfo($request)
+        );
+        
+        return redirect()->back()->with('success', 'Idle timeout updated successfully.');
+    }
+
+    /**
      * Toggle monitoring for a specific role (Admin only)
      */
     public function toggleRoleMonitoring(Request $request)

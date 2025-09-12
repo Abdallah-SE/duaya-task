@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Log;
 use Inertia\Inertia;
 use App\Models\User;
 use App\Models\Employee;
@@ -26,30 +27,57 @@ class EmployeeDashboardController extends Controller
         $user->load('employee');
         
         // Debug: Log what we're sending to frontend
-        \Log::info('🔍 EmployeeDashboardController called for user: ' . $user->id);
+        Log::info('🔍 EmployeeDashboardController called for user: ' . $user->id);
         $isIdleMonitoringEnabled = $user->isIdleMonitoringEnabled();
-        \Log::info('🔍 EmployeeDashboardController - isIdleMonitoringEnabled: ' . ($isIdleMonitoringEnabled ? 'true' : 'false'));
+        Log::info('🔍 EmployeeDashboardController - isIdleMonitoringEnabled: ' . ($isIdleMonitoringEnabled ? 'true' : 'false'));
         
-        // Get limited statistics for employee
+        // Get comprehensive statistics for employee
         $stats = [
             'myActivities' => ActivityLog::where('user_id', $user->id)->count(),
             'myPenalties' => $user->penalties()->count(),
             'myIdleSessions' => $user->idleSessions()->count(),
+            'totalIdleTime' => $user->idleSessions()->sum('duration_seconds'),
+            'averageIdleTime' => $user->idleSessions()->avg('duration_seconds') ?? 0,
+            'todayActivities' => ActivityLog::where('user_id', $user->id)
+                ->whereDate('created_at', today())
+                ->count(),
+            'thisWeekActivities' => ActivityLog::where('user_id', $user->id)
+                ->whereBetween('created_at', [now()->startOfWeek(), now()->endOfWeek()])
+                ->count(),
+            'thisMonthActivities' => ActivityLog::where('user_id', $user->id)
+                ->whereMonth('created_at', now()->month)
+                ->whereYear('created_at', now()->year)
+                ->count(),
         ];
         
-        // Get employee's recent activities only
+        // Get employee's recent activities with more details
         $myActivities = ActivityLog::where('user_id', $user->id)
             ->latest()
-            ->limit(10)
+            ->limit(15)
             ->get()
             ->map(function ($activity) {
                 return [
                     'id' => $activity->id,
                     'action' => $activity->action,
+                    'subject_type' => $activity->subject_type,
+                    'subject_id' => $activity->subject_id,
                     'ip_address' => $activity->ip_address,
                     'device' => $activity->device,
                     'browser' => $activity->browser,
                     'created_at' => $activity->created_at,
+                ];
+            });
+
+        // Get activity breakdown by action type
+        $activityBreakdown = ActivityLog::where('user_id', $user->id)
+            ->selectRaw('action, COUNT(*) as count')
+            ->groupBy('action')
+            ->orderBy('count', 'desc')
+            ->get()
+            ->map(function ($item) {
+                return [
+                    'action' => $item->action,
+                    'count' => $item->count,
                 ];
             });
         
@@ -73,12 +101,13 @@ class EmployeeDashboardController extends Controller
             'isIdleMonitoringEnabled' => $isIdleMonitoringEnabled,
             'stats' => $stats,
             'myActivities' => $myActivities,
+            'activityBreakdown' => $activityBreakdown,
             'myPenalties' => $myPenalties,
             'myIdleSessions' => $myIdleSessions,
             'greeting' => $this->getGreeting($user),
         ];
         
-        \Log::info('🔍 Inertia data being sent:', [
+        Log::info('🔍 Inertia data being sent:', [
             'isIdleMonitoringEnabled' => $data['isIdleMonitoringEnabled'],
             'canControlIdleMonitoring' => $data['canControlIdleMonitoring'],
             'initialSettings' => $data['initialSettings']->toArray(),

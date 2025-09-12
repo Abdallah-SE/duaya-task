@@ -27,54 +27,37 @@
                         </span>
                     </p>
                     
-                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                        <!-- Idle Timeout -->
-                        <div class="space-y-2">
-                            <label class="block text-sm font-medium text-gray-700">
-                                Idle Timeout
+                    <!-- Idle Timeout Input -->
+                    <div class="max-w-md">
+                        <label for="idle-timeout" class="block text-sm font-medium text-gray-700 mb-2">
+                            Idle Timeout (seconds)
                             </label>
-                            <div class="flex items-center space-x-3">
-                                <div class="flex-1">
-                                    <div class="text-2xl font-bold text-gray-900">
-                                        {{ globalSettings.idle_timeout }} seconds
-                                    </div>
-                                    <div class="text-sm text-gray-500">
-                                        {{ Math.floor(globalSettings.idle_timeout / 60) }} minutes {{ globalSettings.idle_timeout % 60 }} seconds
-                                    </div>
-                                </div>
-                                <div class="flex-shrink-0">
+                            <div class="relative">
+                                <input
+                                    :id="'idle-timeout'"
+                                    v-model="idleTimeoutInput"
+                                    type="number"
+                                    min="1"
+                                    max="300"
+                                    step="1"
+                                    :disabled="!canControlIdleMonitoring || timeoutUpdating"
+                                    class="block w-full px-4 py-3 text-lg font-semibold text-gray-900 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 disabled:bg-gray-50 disabled:text-gray-500 disabled:cursor-not-allowed"
+                                    :class="canControlIdleMonitoring ? 'cursor-pointer' : 'cursor-not-allowed'"
+                                    @blur="updateIdleTimeout"
+                                    @keyup.enter="updateIdleTimeout"
+                                />
+                            </div>
+                        <div class="mt-2 flex items-center justify-between">
+                            <p class="text-sm text-gray-500">
+                                How long to wait before showing the first inactivity alert
+                            </p>
+                            <div class="flex items-center space-x-2">
                                     <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
                                         <svg class="w-3 h-3 mr-1" fill="currentColor" viewBox="0 0 20 20">
                                             <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-12a1 1 0 10-2 0v4a1 1 0 00.293.707l2.828 2.829a1 1 0 101.415-1.415L11 9.586V6z" clip-rule="evenodd"></path>
                                         </svg>
                                         Timeout
                                     </span>
-                                </div>
-                            </div>
-                        </div>
-
-                        <!-- Max Warnings -->
-                        <div class="space-y-2">
-                            <label class="block text-sm font-medium text-gray-700">
-                                Maximum Warnings
-                            </label>
-                            <div class="flex items-center space-x-3">
-                                <div class="flex-1">
-                                    <div class="text-2xl font-bold text-gray-900">
-                                        {{ globalSettings.max_idle_warnings }}
-                                    </div>
-                                    <div class="text-sm text-gray-500">
-                                        {{ globalSettings.max_idle_warnings === 1 ? 'warning' : 'warnings' }} before logout
-                                    </div>
-                                </div>
-                                <div class="flex-shrink-0">
-                                    <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-orange-100 text-orange-800">
-                                        <svg class="w-3 h-3 mr-1" fill="currentColor" viewBox="0 0 20 20">
-                                            <path fill-rule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clip-rule="evenodd"></path>
-                                        </svg>
-                                        Warnings
-                                    </span>
-                                </div>
                             </div>
                         </div>
                     </div>
@@ -217,12 +200,58 @@ const props = defineProps({
 
 const processing = ref(false)
 const toggleLoading = ref(false)
+const timeoutUpdating = ref(false)
 
 // Make roleSettings reactive for immediate updates
 const reactiveRoleSettings = ref([...props.roleSettings])
 
+// Idle timeout input
+const idleTimeoutInput = ref(props.globalSettings.idle_timeout)
+
 // Toast notifications
 const { showSuccess, showError } = useToastNotifications()
+
+
+// Idle timeout handlers
+const updateIdleTimeout = () => {
+    if (!props.canControlIdleMonitoring) {
+        showError('You do not have permission to modify global settings.')
+        return
+    }
+    
+    const newTimeout = parseInt(idleTimeoutInput.value)
+    
+    // Validate input
+    if (isNaN(newTimeout) || newTimeout < 1 || newTimeout > 300) {
+        showError('Idle timeout must be between 1 and 300 seconds.')
+        idleTimeoutInput.value = props.globalSettings.idle_timeout
+        return
+    }
+    
+    // Don't update if value hasn't changed
+    if (newTimeout === props.globalSettings.idle_timeout) {
+        return
+    }
+    
+    timeoutUpdating.value = true
+    
+    router.patch('/settings/global/timeout', {
+        idle_timeout: newTimeout
+    }, {
+        onSuccess: () => {
+            showSuccess(`Idle timeout updated to ${newTimeout} seconds`)
+        },
+        onError: (errors) => {
+            console.error('Failed to update idle timeout:', errors)
+            showError('Failed to update idle timeout. Please try again.')
+            // Reset to original value
+            idleTimeoutInput.value = props.globalSettings.idle_timeout
+        },
+        onFinish: () => {
+            timeoutUpdating.value = false
+        }
+    })
+}
 
 
 // Role settings handlers

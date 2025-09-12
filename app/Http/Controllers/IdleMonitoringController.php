@@ -118,65 +118,51 @@ class IdleMonitoringController extends Controller
         // Get idle settings from idle_settings table
         $idleSettings = $user->getIdleSettings();
         
-        // For the first warning, create an idle session
-        if ($warningCount === 1) {
-            // End any existing active session first
-            IdleSession::where('user_id', $user->id)
-                ->whereNull('idle_ended_at')
-                ->update(['idle_ended_at' => now()]);
-            
-            // Create new idle session for this idle period
-            $idleSession = IdleSession::startSession($user->id);
-            Log::info('Idle session created for first warning', [
-                'user_id' => $user->id,
-                'session_id' => $idleSession->id,
-                'idle_timeout' => $idleSettings->idle_timeout,
-                'max_warnings' => $idleSettings->max_idle_warnings,
-                'session_data' => $idleSession->toArray()
+        // Create a new idle session for EACH warning (1st, 2nd, 3rd)
+        // End any existing active session first
+        IdleSession::where('user_id', $user->id)
+            ->whereNull('idle_ended_at')
+            ->update(['idle_ended_at' => now()]);
+        
+        // Create new idle session for this specific warning
+        $idleSession = IdleSession::startSession($user->id);
+        Log::info('Idle session created for warning', [
+            'user_id' => $user->id,
+            'warning_count' => $warningCount,
+            'session_id' => $idleSession->id,
+            'idle_timeout' => $idleSettings->idle_timeout,
+            'max_warnings' => $idleSettings->max_idle_warnings,
+            'session_data' => $idleSession->toArray()
+        ]);
+        
+        // Verify the session was actually saved to database
+        $savedSession = IdleSession::find($idleSession->id);
+        if ($savedSession) {
+            Log::info('Idle session verified in database', [
+                'session_id' => $savedSession->id,
+                'user_id' => $savedSession->user_id,
+                'warning_count' => $warningCount,
+                'idle_started_at' => $savedSession->idle_started_at,
+                'created_at' => $savedSession->created_at
             ]);
-            
-            // Verify the session was actually saved to database
-            $savedSession = IdleSession::find($idleSession->id);
-            if ($savedSession) {
-                Log::info('Idle session verified in database', [
-                    'session_id' => $savedSession->id,
-                    'user_id' => $savedSession->user_id,
-                    'idle_started_at' => $savedSession->idle_started_at,
-                    'created_at' => $savedSession->created_at
-                ]);
-            } else {
-                Log::error('Idle session NOT found in database after creation!', [
-                    'expected_id' => $idleSession->id,
-                    'user_id' => $user->id
-                ]);
-            }
-            
-            // Fire event for idle session start
-            event(new UserActivityEvent(
-                user: $user,
-                action: 'idle_session_started',
-                subjectType: 'App\Models\IdleSession',
-                subjectId: $idleSession->id,
-                ipAddress: $request->ip(),
-                device: $this->getDeviceInfo($request),
-                browser: $this->getBrowserInfo($request)
-            ));
         } else {
-            // For subsequent warnings, find the active session
-            $idleSession = IdleSession::where('user_id', $user->id)
-                ->whereNull('idle_ended_at')
-                ->latest()
-                ->first();
-            
-            if (!$idleSession) {
-                Log::warning('No active idle session found for warning', [
-                    'user_id' => $user->id,
-                    'warning_count' => $warningCount
-                ]);
-                // Create a new session if none exists
-                $idleSession = IdleSession::startSession($user->id);
-            }
+            Log::error('Idle session NOT found in database after creation!', [
+                'expected_id' => $idleSession->id,
+                'user_id' => $user->id,
+                'warning_count' => $warningCount
+            ]);
         }
+        
+        // Fire event for idle session start
+        event(new UserActivityEvent(
+            user: $user,
+            action: 'idle_session_started',
+            subjectType: 'App\Models\IdleSession',
+            subjectId: $idleSession->id,
+            ipAddress: $request->ip(),
+            device: $this->getDeviceInfo($request),
+            browser: $this->getBrowserInfo($request)
+        ));
         
         // Fire event for idle warning
         event(new IdleWarningEvent(
