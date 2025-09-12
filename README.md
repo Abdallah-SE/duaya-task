@@ -30,6 +30,51 @@ Track all user activities in the system (especially employees), log CRUD operati
 - ✅ Admin can configure idle timeout from dashboard
 - ✅ Enable/disable idle monitoring per user role
 
+## 🛠️ Tools & Technologies Used
+
+### Backend Technologies
+- **Laravel 11.x** - PHP framework for web applications
+- **PHP 8.2+** - Server-side programming language
+- **MySQL 8.0+** - Relational database management system
+- **Laravel Sanctum** - API authentication system
+- **Spatie Laravel Permission** - Role and permission management
+- **Laravel Inertia.js** - Modern monolith approach
+- **Laravel Events & Listeners** - Event-driven architecture
+- **Laravel Middleware** - Request/response filtering
+- **Laravel Eloquent ORM** - Database abstraction layer
+
+### Frontend Technologies
+- **Vue.js 3** - Progressive JavaScript framework
+- **Inertia.js** - Modern monolith with SPA-like experience
+- **Tailwind CSS** - Utility-first CSS framework
+- **Vite** - Fast build tool and development server
+- **Axios** - HTTP client for API requests
+- **JavaScript ES6+** - Modern JavaScript features
+
+### Development Tools
+- **Composer** - PHP dependency manager
+- **NPM** - Node.js package manager
+- **Git** - Version control system
+- **Laravel Artisan** - Command-line interface
+- **Laravel Migrations** - Database version control
+- **Laravel Seeders** - Database seeding
+- **Laravel Factories** - Model factories for testing
+
+### Database & Storage
+- **MySQL** - Primary database
+- **Laravel Migrations** - Database schema management
+- **Database Indexing** - Performance optimization
+- **Foreign Key Constraints** - Data integrity
+- **Polymorphic Relationships** - Flexible data modeling
+
+### Security & Authentication
+- **Laravel Sanctum** - API token authentication
+- **Spatie Laravel Permission** - Role-based access control
+- **CSRF Protection** - Cross-site request forgery protection
+- **Input Validation** - Data sanitization and validation
+- **SQL Injection Protection** - Eloquent ORM security
+- **XSS Protection** - Cross-site scripting prevention
+
 ## 🏗️ Technical Implementation
 
 ### Backend (Laravel)
@@ -114,6 +159,10 @@ CREATE TABLE role_settings (
 
 ## 🚀 Installation
 
+### Prerequisites
+- PHP 8.2+, Composer, Node.js 18+, MySQL 8.0+
+
+### Quick Setup
 ```bash
 # Clone repository
 git clone https://github.com/Abdallah-SE/duaya-task.git
@@ -127,6 +176,11 @@ npm install
 cp .env.example .env
 php artisan key:generate
 
+# Configure database in .env file
+DB_DATABASE=duaya_task
+DB_USERNAME=your_username
+DB_PASSWORD=your_password
+
 # Database setup
 php artisan migrate:fresh --seed
 
@@ -136,6 +190,14 @@ npm run build
 # Start server
 php artisan serve
 ```
+
+### Access Application
+- **Admin**: http://localhost:8000/admin/login
+- **Employee**: http://localhost:8000/employee/login
+
+**Default Credentials:**
+- Admin: `admin@duaya.com` / `password`
+- Employee: `employee1@duaya.com` / `password`
 
 ## 📝 Usage Guide
 
