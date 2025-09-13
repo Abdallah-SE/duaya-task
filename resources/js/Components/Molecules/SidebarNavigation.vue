@@ -75,7 +75,7 @@ const navigationItems = computed(() => {
 })
 
 const settingsRoute = computed(() => {
-  return props.user?.has_admin_role ? '/admin/settings' : '/settings'
+  return props.user?.has_admin_role ? '/admin/settings' : '/employee/settings'
 })
 
 const getLinkClass = (href) => {

@@ -11,6 +11,7 @@ use App\Http\Controllers\IdleMonitoringController;
 use App\Http\Controllers\UserController;
 use App\Http\Controllers\EmployeeController;
 use App\Http\Controllers\AdminSettingsController;
+use App\Http\Controllers\EmployeeSettingsController;
 use Illuminate\Support\Facades\Auth;
 use Inertia\Inertia;
 
@@ -57,6 +58,12 @@ Route::prefix('employee')->middleware(['auth', 'role:employee', 'log.activity'])
     
     // Employee Management Routes
     Route::resource('employees', EmployeeController::class)->names('employee.employees');
+    
+    // Employee Settings Routes (read-only for employees)
+    Route::get('/settings', [EmployeeSettingsController::class, 'index'])->name('employee.settings');
+    Route::put('/settings', [EmployeeSettingsController::class, 'update'])->name('employee.settings.update');
+    Route::get('/settings/api', [EmployeeSettingsController::class, 'getSettings'])->name('employee.settings.api');
+    Route::get('/monitoring-status', [EmployeeSettingsController::class, 'getUserMonitoringStatus'])->name('employee.monitoring.status');
 });
 
 // General routes (both admin and web guards)
@@ -78,17 +85,17 @@ Route::middleware(['auth', 'log.activity'])->group(function () {
     Route::get('/activities/user/{user}', [ActivityController::class, 'getUserActivities'])->name('activities.user');
     Route::post('/activities/penalty', [ActivityController::class, 'applyPenalty'])->name('activities.penalty');
     
-    // Settings (both admin and web guards)
+    // General settings (fallback for users without specific role-based settings)
     Route::get('/settings', [SettingsController::class, 'index'])->name('settings.index');
     Route::put('/settings', [SettingsController::class, 'update'])->name('settings.update');
     Route::get('/settings/api', [SettingsController::class, 'getSettings'])->name('settings.api');
     
-    // Role settings management (admin only)
+    // Role settings management (admin only) - keeping for backward compatibility
     Route::put('/settings/roles', [SettingsController::class, 'updateRoleSettings'])->name('settings.roles');
     Route::patch('/settings/roles/toggle', [SettingsController::class, 'toggleRoleMonitoring'])->name('settings.roles.toggle');
     Route::patch('/settings/global/timeout', [SettingsController::class, 'updateTimeout'])->name('settings.global.timeout');
     
-    // User monitoring status check
+    // User monitoring status check (general)
     Route::get('/monitoring-status', [SettingsController::class, 'getUserMonitoringStatus'])->name('monitoring.status');
 });
 
