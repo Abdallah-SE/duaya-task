@@ -13,6 +13,8 @@ use App\Models\Penalty;
 use App\Events\UserCreatedEvent;
 use App\Events\UserUpdatedEvent;
 use App\Events\UserDeletedEvent;
+use App\Http\Requests\StoreUserRequest;
+use App\Http\Requests\UpdateUserRequest;
 
 class UserController extends Controller
 {
@@ -48,8 +50,6 @@ class UserController extends Controller
             })
         ];
         
-        // Activity logging handled by LogActivity middleware
-        
         // Determine which component to render based on the route
         $isEmployeeRoute = request()->is('employee/users*');
         
@@ -77,37 +77,16 @@ class UserController extends Controller
     }
     
     /**
-     * Show the form for creating a new user.
-     */
-    public function create()
-    {
-        $this->authorize('create', User::class);
-        
-        // For modal-based approach, we don't need a separate page
-        $currentUser = auth('admin')->user() ?? Auth::user();
-        $redirectRoute = $currentUser->hasRole('admin') ? 'admin.users.index' : 'employee.users.index';
-        return redirect()->route($redirectRoute);
-    }
-    
-    /**
      * Store a newly created user.
      */
-    public function store(Request $request)
+    public function store(StoreUserRequest $request)
     {
-        $this->authorize('create', User::class);
-        
         $currentUser = auth('admin')->user() ?? Auth::user();
         
-        $validated = $request->validate([
-            'name' => 'required|string|max:255',
-            'email' => 'required|string|email|max:255|unique:users',
-            'password' => 'required|string|min:8|confirmed',
-        ]);
-        
         $user = User::create([
-            'name' => $validated['name'],
-            'email' => $validated['email'],
-            'password' => Hash::make($validated['password']),
+            'name' => $request->input('name'),
+            'email' => $request->input('email'),
+            'password' => Hash::make($request->input('password')),
         ]);
         
         // Assign default role as employee
@@ -120,7 +99,7 @@ class UserController extends Controller
         event(new UserCreatedEvent(
             $user,
             Auth::id(),
-            $request->ip(),
+            $request->getClientIp(),
             $this->getDeviceInfo($request),
             $this->getBrowserInfo($request)
         ));
@@ -131,55 +110,22 @@ class UserController extends Controller
     }
     
     /**
-     * Display the specified user.
-     */
-    public function show(User $user)
-    {
-        $this->authorize('view', $user);
-        
-        // For modal-based approach, we don't need a separate page
-        $currentUser = auth('admin')->user() ?? Auth::user();
-        $redirectRoute = $currentUser->hasRole('admin') ? 'admin.users.index' : 'employee.users.index';
-        return redirect()->route($redirectRoute);
-    }
-    
-    /**
-     * Show the form for editing the user.
-     */
-    public function edit(User $user)
-    {
-        $this->authorize('update', $user);
-        
-        // For modal-based approach, we don't need a separate page
-        $currentUser = auth('admin')->user() ?? Auth::user();
-        $redirectRoute = $currentUser->hasRole('admin') ? 'admin.users.index' : 'employee.users.index';
-        return redirect()->route($redirectRoute);
-    }
-    
-    /**
      * Update the specified user.
      */
-    public function update(Request $request, User $user)
+    public function update(UpdateUserRequest $request, User $user)
     {
-        $this->authorize('update', $user);
-        
         $currentUser = auth('admin')->user() ?? Auth::user();
         
-        $validated = $request->validate([
-            'name' => 'required|string|max:255',
-            'email' => 'required|string|email|max:255|unique:users,email,' . $user->id,
-        ]);
-        
         $user->update([
-            'name' => $validated['name'],
-            'email' => $validated['email'],
+            'name' => $request->input('name'),
+            'email' => $request->input('email'),
         ]);
         
         // Dispatch event for user update
         event(new UserUpdatedEvent(
             $user,
             Auth::id(),
-            $request->ip(),
+            $request->getClientIp(),
             $this->getDeviceInfo($request),
             $this->getBrowserInfo($request)
         ));
@@ -194,8 +140,6 @@ class UserController extends Controller
      */
     public function destroy(User $user)
     {
-        $this->authorize('delete', $user);
-        
         // Dispatch event for user deletion (before deleting)
         event(new UserDeletedEvent(
             $user,

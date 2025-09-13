@@ -9,6 +9,7 @@ use App\Models\User;
 use App\Models\ActivityLog;
 use App\Events\UserActivityEvent;
 use App\Events\PenaltyAppliedEvent;
+use App\Http\Requests\ApplyPenaltyRequest;
 
 class ActivityController extends Controller
 {
@@ -40,27 +41,21 @@ class ActivityController extends Controller
         ]);
     }
     
-    public function applyPenalty(Request $request)
+    public function applyPenalty(ApplyPenaltyRequest $request)
     {
-        $request->validate([
-            'user_id' => 'required|exists:users,id',
-            'reason' => 'required|string|max:255',
-            'count' => 'integer|min:1',
-        ]);
-        
         $penalty = Penalty::create([
-            'user_id' => $request->user_id,
-            'reason' => $request->reason,
-            'count' => $request->count ?? 1,
+            'user_id' => $request->input('user_id'),
+            'reason' => $request->input('reason'),
+            'count' => $request->input('count', 1),
             'date' => now(),
-            'metadata' => $request->metadata ?? [],
+            'metadata' => $request->input('metadata', []),
         ]);
         
         // Fire event for penalty application
         event(new PenaltyAppliedEvent(
-            user: $request->user(),
+            user: auth()->user(),
             penalty: $penalty,
-            reason: $request->reason
+            reason: $request->input('reason')
         ));
         
         return response()->json([

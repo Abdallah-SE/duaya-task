@@ -15,6 +15,8 @@ use App\Models\Penalty;
 use App\Events\EmployeeCreatedEvent;
 use App\Events\EmployeeUpdatedEvent;
 use App\Events\EmployeeDeletedEvent;
+use App\Http\Requests\StoreEmployeeRequest;
+use App\Http\Requests\UpdateEmployeeRequest;
 
 class EmployeeController extends Controller
 {
@@ -68,8 +70,6 @@ class EmployeeController extends Controller
             })
         ];
         
-        // Activity logging handled by LogActivity middleware
-        
         // Determine which component to render based on the route
         $isEmployeeRoute = request()->is('employee/employees*');
         
@@ -107,55 +107,25 @@ class EmployeeController extends Controller
     }
     
     /**
-     * Show the form for creating a new employee.
-     */
-    public function create()
-    {
-        $this->authorize('create', Employee::class);
-        
-        // For modal-based approach, we don't need a separate page
-        $currentUser = auth('admin')->user() ?? Auth::user();
-        $redirectRoute = $currentUser->hasRole('admin') ? 'admin.employees.index' : 'employee.employees.index';
-        return redirect()->route($redirectRoute);
-    }
-    
-    /**
      * Store a newly created employee.
      */
-    public function store(Request $request)
+    public function store(StoreEmployeeRequest $request)
     {
-        $this->authorize('create', Employee::class);
-        
         $currentUser = auth('admin')->user() ?? Auth::user();
-        
-        $validated = $request->validate([
-            'user_id' => 'required|exists:users,id',
-            'job_title' => 'required|string|max:255',
-            'department' => 'required|string|max:255',
-            'hire_date' => 'required|date',
-        ]);
-        
-        // Check if user already has an employee record
-        $existingEmployee = Employee::where('user_id', $validated['user_id'])->first();
-        if ($existingEmployee) {
-            return redirect()->back()
-                ->withErrors(['user_id' => 'This user already has an employee record.'])
-                ->withInput();
-        }
         
         // Create employee record
         $employee = Employee::create([
-            'user_id' => $validated['user_id'],
-            'job_title' => $validated['job_title'],
-            'department' => $validated['department'],
-            'hire_date' => $validated['hire_date'],
+            'user_id' => $request->input('user_id'),
+            'job_title' => $request->input('job_title'),
+            'department' => $request->input('department'),
+            'hire_date' => $request->input('hire_date'),
         ]);
         
         // Dispatch event for employee creation
         event(new EmployeeCreatedEvent(
             $employee,
             Auth::id(),
-            $request->ip(),
+            $request->getClientIp(),
             $this->getDeviceInfo($request),
             $this->getBrowserInfo($request)
         ));
@@ -166,58 +136,24 @@ class EmployeeController extends Controller
     }
     
     /**
-     * Display the specified employee.
-     */
-    public function show(Employee $employee)
-    {
-        $this->authorize('view', $employee);
-        
-        // For modal-based approach, we don't need a separate page
-        $currentUser = auth('admin')->user() ?? Auth::user();
-        $redirectRoute = $currentUser->hasRole('admin') ? 'admin.employees.index' : 'employee.employees.index';
-        return redirect()->route($redirectRoute);
-    }
-    
-    /**
-     * Show the form for editing the employee.
-     */
-    public function edit(Employee $employee)
-    {
-        $this->authorize('update', $employee);
-        
-        // For modal-based approach, we don't need a separate page
-        $currentUser = auth('admin')->user() ?? Auth::user();
-        $redirectRoute = $currentUser->hasRole('admin') ? 'admin.employees.index' : 'employee.employees.index';
-        return redirect()->route($redirectRoute);
-    }
-    
-    /**
      * Update the specified employee.
      */
-    public function update(Request $request, Employee $employee)
+    public function update(UpdateEmployeeRequest $request, Employee $employee)
     {
-        $this->authorize('update', $employee);
-        
         $currentUser = auth('admin')->user() ?? Auth::user();
-        
-        $validated = $request->validate([
-            'job_title' => 'required|string|max:255',
-            'department' => 'required|string|max:255',
-            'hire_date' => 'required|date',
-        ]);
         
         // Update employee data only (exclude any user-related fields)
         $employee->update([
-            'job_title' => $validated['job_title'],
-            'department' => $validated['department'],
-            'hire_date' => $validated['hire_date'],
+            'job_title' => $request->input('job_title'),
+            'department' => $request->input('department'),
+            'hire_date' => $request->input('hire_date'),
         ]);
         
         // Dispatch event for employee update
         event(new EmployeeUpdatedEvent(
             $employee,
             Auth::id(),
-            $request->ip(),
+            $request->getClientIp(),
             $this->getDeviceInfo($request),
             $this->getBrowserInfo($request)
         ));
@@ -232,8 +168,6 @@ class EmployeeController extends Controller
      */
     public function destroy(Employee $employee)
     {
-        $this->authorize('delete', $employee);
-        
         // Dispatch event for employee deletion (before deleting)
         event(new EmployeeDeletedEvent(
             $employee,
