@@ -13,7 +13,6 @@ use App\Events\UserActivityCreatedEvent;
 use App\Events\UserActivityUpdatedEvent;
 use App\Events\UserActivityDeletedEvent;
 use App\Events\UserActivityViewedEvent;
-use App\Events\EmployeeCreatedEvent;
 use App\Listeners\LogUserActivity;
 use App\Listeners\HandleIdleWarning;
 use App\Listeners\HandlePenaltyApplied;
@@ -21,7 +20,6 @@ use App\Listeners\LogUserActivityCreated;
 use App\Listeners\LogUserActivityUpdated;
 use App\Listeners\LogUserActivityDeleted;
 use App\Listeners\LogUserActivityViewed;
-use App\Listeners\LogEmployeeCreated;
 
 class EventServiceProvider extends ServiceProvider
 {
@@ -55,9 +53,6 @@ class EventServiceProvider extends ServiceProvider
         UserActivityViewedEvent::class => [
             LogUserActivityViewed::class,
         ],
-        EmployeeCreatedEvent::class => [
-            LogEmployeeCreated::class,
-        ],
     ];
 
     /**
@@ -73,6 +68,6 @@ class EventServiceProvider extends ServiceProvider
      */
     public function shouldDiscoverEvents(): bool
     {
-        return false;
+        return true;
     }
 }

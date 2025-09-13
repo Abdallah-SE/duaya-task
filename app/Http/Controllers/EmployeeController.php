@@ -13,6 +13,8 @@ use App\Models\ActivityLog;
 use App\Models\IdleSetting;
 use App\Models\Penalty;
 use App\Events\EmployeeCreatedEvent;
+use App\Events\EmployeeUpdatedEvent;
+use App\Events\EmployeeDeletedEvent;
 
 class EmployeeController extends Controller
 {
@@ -220,16 +222,14 @@ class EmployeeController extends Controller
             'hire_date' => $validated['hire_date'],
         ]);
         
-        // Log activity
-        ActivityLog::logActivity(
-            userId: Auth::id(),
-            action: 'update_employee',
-            subjectType: 'App\Models\Employee',
-            subjectId: $employee->id,
-            ipAddress: $request->ip(),
-            device: $this->getDeviceInfo($request),
-            browser: $this->getBrowserInfo($request)
-        );
+        // Dispatch event for employee update
+        event(new EmployeeUpdatedEvent(
+            $employee,
+            Auth::id(),
+            $request->ip(),
+            $this->getDeviceInfo($request),
+            $this->getBrowserInfo($request)
+        ));
         
         $redirectRoute = $currentUser->hasRole('admin') ? 'admin.employees.index' : 'employee.employees.index';
         return redirect()->route($redirectRoute)
@@ -243,16 +243,14 @@ class EmployeeController extends Controller
     {
         $this->authorize('delete', $employee);
         
-        // Log admin activity before deletion
-        ActivityLog::logActivity(
-            userId: Auth::id(),
-            action: 'delete_employee',
-            subjectType: 'App\Models\Employee',
-            subjectId: $employee->id,
-            ipAddress: request()->ip(),
-            device: $this->getDeviceInfo(request()),
-            browser: $this->getBrowserInfo(request())
-        );
+        // Dispatch event for employee deletion (before deleting)
+        event(new EmployeeDeletedEvent(
+            $employee,
+            Auth::id(),
+            request()->ip(),
+            $this->getDeviceInfo(request()),
+            $this->getBrowserInfo(request())
+        ));
         
         // Delete only the employee record, keep the user
         $employee->delete();

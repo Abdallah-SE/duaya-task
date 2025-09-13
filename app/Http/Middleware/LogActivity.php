@@ -38,6 +38,12 @@ class LogActivity
             'telescope.*',
             'horizon.*',
             'api.*', // Skip API routes if not needed
+            'admin.employees.store',    // Skip - handled by EmployeeCreatedEvent
+            'admin.employees.update',   // Skip - handled by EmployeeUpdatedEvent
+            'admin.employees.destroy',  // Skip - handled by EmployeeDeletedEvent
+            'employee.employees.store',    // Skip - handled by EmployeeCreatedEvent
+            'employee.employees.update',   // Skip - handled by EmployeeUpdatedEvent
+            'employee.employees.destroy',  // Skip - handled by EmployeeDeletedEvent
         ];
         
         $routeName = $request->route()?->getName();
