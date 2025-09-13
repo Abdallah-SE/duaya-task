@@ -45,16 +45,7 @@ class UserController extends Controller
             })
         ];
         
-        // Log activity
-        ActivityLog::logActivity(
-            userId: Auth::id(),
-            action: 'view_users',
-            subjectType: 'App\Models\User',
-            subjectId: null,
-            ipAddress: request()->ip(),
-            device: $this->getDeviceInfo(request()),
-            browser: $this->getBrowserInfo(request())
-        );
+        // Activity logging handled by LogActivity middleware
         
         // Determine which component to render based on the route
         $isEmployeeRoute = request()->is('employee/users*');
@@ -122,16 +113,7 @@ class UserController extends Controller
         // Create default idle settings
         $user->getIdleSettings();
         
-        // Log activity
-        ActivityLog::logActivity(
-            userId: Auth::id(),
-            action: 'create_user',
-            subjectType: 'App\Models\User',
-            subjectId: $user->id,
-            ipAddress: $request->ip(),
-            device: $this->getDeviceInfo($request),
-            browser: $this->getBrowserInfo($request)
-        );
+        // Create activity is logged by UserActivityCreatedEvent
         
         $redirectRoute = $currentUser->hasRole('admin') ? 'admin.users.index' : 'employee.users.index';
         return redirect()->route($redirectRoute)
@@ -183,16 +165,7 @@ class UserController extends Controller
             'email' => $validated['email'],
         ]);
         
-        // Log activity
-        ActivityLog::logActivity(
-            userId: Auth::id(),
-            action: 'update_user',
-            subjectType: 'App\Models\User',
-            subjectId: $user->id,
-            ipAddress: $request->ip(),
-            device: $this->getDeviceInfo($request),
-            browser: $this->getBrowserInfo($request)
-        );
+        // Update activity is logged by UserActivityUpdatedEvent
         
         $redirectRoute = $currentUser->hasRole('admin') ? 'admin.users.index' : 'employee.users.index';
         return redirect()->route($redirectRoute)
@@ -206,16 +179,7 @@ class UserController extends Controller
     {
         $this->authorize('delete', $user);
         
-        // Log admin activity before deletion
-        ActivityLog::logActivity(
-            userId: Auth::id(),
-            action: 'delete_user',
-            subjectType: 'App\Models\User',
-            subjectId: $user->id,
-            ipAddress: request()->ip(),
-            device: $this->getDeviceInfo(request()),
-            browser: $this->getBrowserInfo(request())
-        );
+        // Delete activity is logged by UserActivityDeletedEvent
         
         $user->delete();
         

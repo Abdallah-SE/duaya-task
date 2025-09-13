@@ -68,16 +68,7 @@ class EmployeeController extends Controller
             })
         ];
         
-        // Log activity
-        ActivityLog::logActivity(
-            userId: Auth::id(),
-            action: 'view_employees',
-            subjectType: 'App\Models\Employee',
-            subjectId: null,
-            ipAddress: request()->ip(),
-            device: $this->getDeviceInfo(request()),
-            browser: $this->getBrowserInfo(request())
-        );
+        // Activity logging handled by LogActivity middleware
         
         // Determine which component to render based on the route
         $isEmployeeRoute = request()->is('employee/employees*');

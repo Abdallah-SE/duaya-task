@@ -6,12 +6,14 @@ use Closure;
 use Illuminate\Http\Request;
 use Symfony\Component\HttpFoundation\Response;
 use App\Models\ActivityLog;
-use App\Events\UserActivityEvent;
 
 class LogActivity
 {
     /**
      * Handle an incoming request.
+     * 
+     * This middleware focuses on logging read operations (index, show) for user activity tracking.
+     * CRUD operations (create, update, delete) are handled by specific events to avoid redundancy.
      *
      * @param  \Closure(\Illuminate\Http\Request): (\Symfony\Component\HttpFoundation\Response)  $next
      */
@@ -38,6 +40,13 @@ class LogActivity
             'telescope.*',
             'horizon.*',
             'api.*', // Skip API routes if not needed
+            // Skip CRUD operations handled by events (keep read operations for middleware)
+            'admin.users.store',        // Skip - handled by UserActivityCreatedEvent
+            'admin.users.update',       // Skip - handled by UserActivityUpdatedEvent
+            'admin.users.destroy',      // Skip - handled by UserActivityDeletedEvent
+            'employee.users.store',     // Skip - handled by UserActivityCreatedEvent
+            'employee.users.update',    // Skip - handled by UserActivityUpdatedEvent
+            'employee.users.destroy',   // Skip - handled by UserActivityDeletedEvent
             'admin.employees.store',    // Skip - handled by EmployeeCreatedEvent
             'admin.employees.update',   // Skip - handled by EmployeeUpdatedEvent
             'admin.employees.destroy',  // Skip - handled by EmployeeDeletedEvent
@@ -98,28 +107,19 @@ class LogActivity
         $action = $this->determineAction($method, $route);
         
         // Get subject information if available
-        $subjectType = null;
-        $subjectId = null;
+        $subjectType = $this->getSubjectType($route);
+        $subjectId = $this->getSubjectId($route);
         
-        if ($route && $route->parameters()) {
-            $parameters = $route->parameters();
-            $model = $this->getModelFromRoute($route, $parameters);
-            if ($model) {
-                $subjectType = get_class($model);
-                $subjectId = $model->id;
-            }
-        }
-        
-        // Fire event for activity logging
-        event(new UserActivityEvent(
-            user: $user,
+        // Log activity directly for read operations
+        ActivityLog::logActivity(
+            userId: $user->id,
             action: $action,
             subjectType: $subjectType,
             subjectId: $subjectId,
             ipAddress: $request->ip(),
             device: $this->getDeviceInfo($request),
             browser: $this->getBrowserInfo($request)
-        ));
+        );
     }
     
     private function determineAction(string $method, $route): string
@@ -136,19 +136,65 @@ class LogActivity
             [$controller, $method] = explode('@', $routeAction);
             $controllerName = class_basename($controller);
             
+            // Map controller names to model names for consistency with events
+            $modelName = match ($controllerName) {
+                'UserController' => 'user',
+                'EmployeeController' => 'employee',
+                default => strtolower(str_replace('Controller', '', $controllerName))
+            };
+            
             return match (strtolower($method)) {
-                'index' => "view_{$controllerName}",
-                'show' => "view_{$controllerName}",
-                'create' => "view_{$controllerName}_form",
-                'store' => "create_{$controllerName}",
-                'edit' => "view_{$controllerName}_edit",
-                'update' => "update_{$controllerName}",
-                'destroy' => "delete_{$controllerName}",
-                default => strtolower($method) . "_{$controllerName}",
+                'index' => "view_{$modelName}s",  // view_users, view_employees
+                'show' => "view_{$modelName}",    // view_user, view_employee
+                'create' => "view_{$modelName}_form",
+                'edit' => "view_{$modelName}_edit",
+                default => strtolower($method) . "_{$modelName}",
             };
         }
         
+        // Fallback for routes without @ in action
         return "access_{$routeName}";
+    }
+    
+    private function getSubjectType($route): ?string
+    {
+        if (!$route) {
+            return null;
+        }
+        
+        $routeAction = $route->getActionName();
+        
+        // Extract controller name and map to model class
+        if (str_contains($routeAction, '@')) {
+            [$controller] = explode('@', $routeAction);
+            $controllerName = class_basename($controller);
+            
+            return match ($controllerName) {
+                'UserController' => 'App\Models\User',
+                'EmployeeController' => 'App\Models\Employee',
+                default => null
+            };
+        }
+        
+        return null;
+    }
+    
+    private function getSubjectId($route): ?int
+    {
+        if (!$route || !$route->parameters()) {
+            return null;
+        }
+        
+        $parameters = $route->parameters();
+        
+        // Try to find a model in the route parameters
+        foreach ($parameters as $parameter) {
+            if (is_object($parameter) && method_exists($parameter, 'getKey')) {
+                return $parameter->id;
+            }
+        }
+        
+        return null;
     }
     
     private function getModelFromRoute($route, $parameters)
