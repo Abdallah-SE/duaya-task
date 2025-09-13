@@ -4,7 +4,9 @@ namespace App\Listeners;
 
 use App\Events\EmployeeUpdatedEvent;
 use App\Models\ActivityLog;
+use Illuminate\Events\Attributes\AsEventListener;
 
+#[AsEventListener]
 class LogEmployeeUpdated
 {
     /**

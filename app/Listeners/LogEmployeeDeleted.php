@@ -4,10 +4,11 @@ namespace App\Listeners;
 
 use App\Events\EmployeeDeletedEvent;
 use App\Models\ActivityLog;
+use Illuminate\Events\Attributes\AsEventListener;
 
+#[AsEventListener]
 class LogEmployeeDeleted
 {
-
     /**
      * Create the event listener.
      */

@@ -6,7 +6,6 @@ use App\Events\UserActivityEvent;
 use App\Models\ActivityLog;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Queue\InteractsWithQueue;
-
 class LogUserActivity implements ShouldQueue
 {
     use InteractsWithQueue;

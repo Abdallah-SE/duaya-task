@@ -2,12 +2,12 @@
 
 namespace App\Listeners;
 
-use App\Events\EmployeeCreatedEvent;
+use App\Events\UserUpdatedEvent;
 use App\Models\ActivityLog;
 use Illuminate\Events\Attributes\AsEventListener;
 
 #[AsEventListener]
-class LogEmployeeCreated
+class LogUserUpdated
 {
     /**
      * Create the event listener.
@@ -20,13 +20,13 @@ class LogEmployeeCreated
     /**
      * Handle the event.
      */
-    public function handle(EmployeeCreatedEvent $event): void
+    public function handle(UserUpdatedEvent $event): void
     {
         ActivityLog::logActivity(
             userId: $event->userId,
-            action: 'create_employee',
-            subjectType: 'App\Models\Employee',
-            subjectId: $event->employee->id,
+            action: 'update_user',
+            subjectType: 'App\Models\User',
+            subjectId: $event->user->id,
             ipAddress: $event->ipAddress,
             device: $event->device,
             browser: $event->browser

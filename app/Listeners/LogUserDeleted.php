@@ -2,12 +2,12 @@
 
 namespace App\Listeners;
 
-use App\Events\EmployeeCreatedEvent;
+use App\Events\UserDeletedEvent;
 use App\Models\ActivityLog;
 use Illuminate\Events\Attributes\AsEventListener;
 
 #[AsEventListener]
-class LogEmployeeCreated
+class LogUserDeleted
 {
     /**
      * Create the event listener.
@@ -20,13 +20,13 @@ class LogEmployeeCreated
     /**
      * Handle the event.
      */
-    public function handle(EmployeeCreatedEvent $event): void
+    public function handle(UserDeletedEvent $event): void
     {
         ActivityLog::logActivity(
             userId: $event->userId,
-            action: 'create_employee',
-            subjectType: 'App\Models\Employee',
-            subjectId: $event->employee->id,
+            action: 'delete_user',
+            subjectType: 'App\Models\User',
+            subjectId: $event->user->id,
             ipAddress: $event->ipAddress,
             device: $event->device,
             browser: $event->browser

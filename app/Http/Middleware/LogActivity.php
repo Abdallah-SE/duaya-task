@@ -148,6 +148,9 @@ class LogActivity
                 'show' => "view_{$modelName}",    // view_user, view_employee
                 'create' => "view_{$modelName}_form",
                 'edit' => "view_{$modelName}_edit",
+                'store' => "create_{$modelName}",  // create_user, create_employee
+                'update' => "update_{$modelName}", // update_user, update_employee
+                'destroy' => "delete_{$modelName}", // delete_user, delete_employee
                 default => strtolower($method) . "_{$modelName}",
             };
         }

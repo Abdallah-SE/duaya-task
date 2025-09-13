@@ -6,7 +6,9 @@ use App\Events\PenaltyAppliedEvent;
 use App\Models\ActivityLog;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Queue\InteractsWithQueue;
+use Illuminate\Events\Attributes\AsEventListener;
 
+#[AsEventListener]
 class HandlePenaltyApplied implements ShouldQueue
 {
     use InteractsWithQueue;

@@ -10,6 +10,9 @@ use App\Models\User;
 use App\Models\ActivityLog;
 use App\Models\IdleSetting;
 use App\Models\Penalty;
+use App\Events\UserCreatedEvent;
+use App\Events\UserUpdatedEvent;
+use App\Events\UserDeletedEvent;
 
 class UserController extends Controller
 {
@@ -113,7 +116,14 @@ class UserController extends Controller
         // Create default idle settings
         $user->getIdleSettings();
         
-        // Create activity is logged by UserActivityCreatedEvent
+        // Dispatch event for user creation
+        event(new UserCreatedEvent(
+            $user,
+            Auth::id(),
+            $request->ip(),
+            $this->getDeviceInfo($request),
+            $this->getBrowserInfo($request)
+        ));
         
         $redirectRoute = $currentUser->hasRole('admin') ? 'admin.users.index' : 'employee.users.index';
         return redirect()->route($redirectRoute)
@@ -165,7 +175,14 @@ class UserController extends Controller
             'email' => $validated['email'],
         ]);
         
-        // Update activity is logged by UserActivityUpdatedEvent
+        // Dispatch event for user update
+        event(new UserUpdatedEvent(
+            $user,
+            Auth::id(),
+            $request->ip(),
+            $this->getDeviceInfo($request),
+            $this->getBrowserInfo($request)
+        ));
         
         $redirectRoute = $currentUser->hasRole('admin') ? 'admin.users.index' : 'employee.users.index';
         return redirect()->route($redirectRoute)
@@ -179,7 +196,14 @@ class UserController extends Controller
     {
         $this->authorize('delete', $user);
         
-        // Delete activity is logged by UserActivityDeletedEvent
+        // Dispatch event for user deletion (before deleting)
+        event(new UserDeletedEvent(
+            $user,
+            Auth::id(),
+            request()->ip(),
+            $this->getDeviceInfo(request()),
+            $this->getBrowserInfo(request())
+        ));
         
         $user->delete();
         
