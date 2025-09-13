@@ -12,6 +12,7 @@ use App\Models\Employee;
 use App\Models\ActivityLog;
 use App\Models\IdleSetting;
 use App\Models\Penalty;
+use App\Events\EmployeeCreatedEvent;
 
 class EmployeeController extends Controller
 {
@@ -157,16 +158,14 @@ class EmployeeController extends Controller
             'hire_date' => $validated['hire_date'],
         ]);
         
-        // Log activity
-        ActivityLog::logActivity(
-            userId: Auth::id(),
-            action: 'create_employee',
-            subjectType: 'App\Models\Employee',
-            subjectId: $employee->id,
-            ipAddress: $request->ip(),
-            device: $this->getDeviceInfo($request),
-            browser: $this->getBrowserInfo($request)
-        );
+        // Dispatch event for employee creation
+        event(new EmployeeCreatedEvent(
+            $employee,
+            Auth::id(),
+            $request->ip(),
+            $this->getDeviceInfo($request),
+            $this->getBrowserInfo($request)
+        ));
         
         $redirectRoute = $currentUser->hasRole('admin') ? 'admin.employees.index' : 'employee.employees.index';
         return redirect()->route($redirectRoute)
