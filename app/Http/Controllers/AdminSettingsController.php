@@ -9,6 +9,11 @@ use App\Models\IdleSetting;
 use App\Models\RoleSetting;
 use App\Models\ActivityLog;
 use Spatie\Permission\Models\Role;
+use App\Events\GlobalIdleSettingsUpdatedEvent;
+use App\Events\RoleMonitoringToggledEvent;
+use App\Events\Settings\RoleSettingsUpdatedEvent;
+use App\Events\Settings\SettingsViewedEvent;
+use App\Events\Settings\SettingsResetEvent;
 
 class AdminSettingsController extends Controller
 {
@@ -40,15 +45,13 @@ class AdminSettingsController extends Controller
         // Get all available roles (excluding admin_guard)
         $roles = $allRoles->select('id', 'name');
         
-        // Log admin activity
-        ActivityLog::logActivity(
-            userId: $user->id,
-            action: 'view_admin_settings',
-            subjectType: 'App\Models\IdleSetting',
-            subjectId: null,
-            ipAddress: $request->ip(),
-            device: $this->getDeviceInfo($request),
-            browser: $this->getBrowserInfo($request)
+        // Dispatch settings viewed event
+        SettingsViewedEvent::dispatch(
+            $user,
+            $request->ip(),
+            $this->getDeviceInfo($request),
+            $this->getBrowserInfo($request),
+            'admin'
         );
         
         return Inertia::render('Admin/Settings/Index', [
@@ -76,21 +79,23 @@ class AdminSettingsController extends Controller
             abort(403, 'Admin access required');
         }
 
+        // Get old settings for comparison
+        $oldSettings = IdleSetting::getDefault();
+        
         $settings = IdleSetting::updateDefault(
             $request->idle_timeout,
             $request->max_idle_warnings
         );
 
-        // Log admin activity
-        ActivityLog::logActivity(
-            userId: $user->id,
-            action: 'update_global_idle_settings',
-            subjectType: 'App\Models\IdleSetting',
-            subjectId: $settings->id,
-            ipAddress: $request->ip(),
-            device: $this->getDeviceInfo($request),
-            browser: $this->getBrowserInfo($request)
-        );
+        // Dispatch global settings updated event
+        event(new GlobalIdleSettingsUpdatedEvent(
+            $settings,
+            Auth::id(),
+            $request->getClientIp(),
+            $this->getDeviceInfo($request),
+            $this->getBrowserInfo($request),
+            $oldSettings
+        ));
 
         return redirect()->back()->with('success', 'Global settings updated successfully.');
     }
@@ -111,22 +116,24 @@ class AdminSettingsController extends Controller
             return response()->json(['error' => 'Admin access required'], 403);
         }
 
+        // Get old settings for comparison
+        $oldSettings = IdleSetting::getDefault();
+        
         // Update global settings (only timeout, keep max_warnings as default)
         $settings = IdleSetting::updateDefault(
             $request->idle_timeout,
             2 // Keep max_warnings as 2 (fixed value)
         );
 
-        // Log admin activity
-        ActivityLog::logActivity(
-            userId: $user->id,
-            action: 'update_idle_timeout',
-            subjectType: 'App\Models\IdleSetting',
-            subjectId: $settings->id,
-            ipAddress: $request->ip(),
-            device: $this->getDeviceInfo($request),
-            browser: $this->getBrowserInfo($request)
-        );
+        // Dispatch global settings updated event
+        event(new GlobalIdleSettingsUpdatedEvent(
+            $settings,
+            Auth::id(),
+            $request->getClientIp(),
+            $this->getDeviceInfo($request),
+            $this->getBrowserInfo($request),
+            $oldSettings
+        ));
 
         return redirect()->back()->with('success', 'Idle timeout updated successfully.');
     }
@@ -156,15 +163,14 @@ class AdminSettingsController extends Controller
             }
         }
 
-        // Log admin activity
-        ActivityLog::logActivity(
-            userId: $user->id,
-            action: 'update_role_idle_settings',
-            subjectType: 'App\Models\RoleSetting',
-            subjectId: null,
-            ipAddress: $request->ip(),
-            device: $this->getDeviceInfo($request),
-            browser: $this->getBrowserInfo($request)
+        // Dispatch role settings updated event
+        RoleSettingsUpdatedEvent::dispatch(
+            $user,
+            $request->role_settings,
+            $request->ip(),
+            $this->getDeviceInfo($request),
+            $this->getBrowserInfo($request),
+            $updatedRoles
         );
 
         return redirect()->back()->with('success', 'Role settings updated successfully.');
@@ -194,16 +200,15 @@ class AdminSettingsController extends Controller
             ['idle_monitoring_enabled' => $request->enabled]
         );
 
-        // Log admin activity
-        ActivityLog::logActivity(
-            userId: $user->id,
-            action: 'toggle_role_monitoring',
-            subjectType: 'App\Models\RoleSetting',
-            subjectId: $roleSetting->id,
-            ipAddress: $request->ip(),
-            device: $this->getDeviceInfo($request),
-            browser: $this->getBrowserInfo($request)
-        );
+        // Dispatch event for role monitoring toggle
+        event(new RoleMonitoringToggledEvent(
+            $roleSetting,
+            Auth::id(),
+            $request->getClientIp(),
+            $this->getDeviceInfo($request),
+            $this->getBrowserInfo($request),
+            $request->enabled
+        ));
 
         return redirect()->back()->with('success', "Monitoring " . ($request->enabled ? 'enabled' : 'disabled') . " for role: {$role->name}");
     }
@@ -243,15 +248,13 @@ class AdminSettingsController extends Controller
             RoleSetting::updateSetting($role->name, true);
         }
 
-        // Log admin activity
-        ActivityLog::logActivity(
-            userId: $user->id,
-            action: 'reset_idle_settings_to_defaults',
-            subjectType: 'App\Models\IdleSetting',
-            subjectId: null,
-            ipAddress: $request->ip(),
-            device: $this->getDeviceInfo($request),
-            browser: $this->getBrowserInfo($request)
+        // Dispatch settings reset event
+        SettingsResetEvent::dispatch(
+            $user,
+            $request->ip(),
+            $this->getDeviceInfo($request),
+            $this->getBrowserInfo($request),
+            'all'
         );
 
         return redirect()->back()->with('success', 'Settings reset to defaults successfully.');
@@ -262,7 +265,7 @@ class AdminSettingsController extends Controller
      */
     private function getDeviceInfo(Request $request): string
     {
-        $userAgent = $request->userAgent();
+        $userAgent = $request->userAgent() ?? '';
         
         if (str_contains($userAgent, 'Mobile')) {
             return 'Mobile';
@@ -278,7 +281,7 @@ class AdminSettingsController extends Controller
      */
     private function getBrowserInfo(Request $request): string
     {
-        $userAgent = $request->userAgent();
+        $userAgent = $request->userAgent() ?? '';
         
         if (str_contains($userAgent, 'Chrome')) {
             return 'Chrome';

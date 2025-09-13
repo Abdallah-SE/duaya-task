@@ -65,7 +65,7 @@ class AuthController extends Controller
             // Log login activity
             ActivityLog::logActivity(
                 userId: $user->id,
-                action: 'login',
+                action: 'login_user',
                 subjectType: 'App\Models\User',
                 subjectId: $user->id,
                 ipAddress: $request->ip(),
@@ -115,7 +115,7 @@ class AuthController extends Controller
             // Log login activity
             ActivityLog::logActivity(
                 userId: $user->id,
-                action: 'admin_login',
+                action: 'login_admin',
                 subjectType: 'App\Models\User',
                 subjectId: $user->id,
                 ipAddress: $request->ip(),
@@ -160,7 +160,7 @@ class AuthController extends Controller
             // Log login activity
             ActivityLog::logActivity(
                 userId: $user->id,
-                action: 'employee_login',
+                action: 'login_employee',
                 subjectType: 'App\Models\User',
                 subjectId: $user->id,
                 ipAddress: $request->ip(),
@@ -190,7 +190,7 @@ class AuthController extends Controller
             // Log logout activity
             ActivityLog::logActivity(
                 userId: $user->id,
-                action: 'logout',
+                action: 'logout_user',
                 subjectType: 'App\Models\User',
                 subjectId: $user->id,
                 ipAddress: $request->ip(),

@@ -8,6 +8,7 @@ use Inertia\Inertia;
 use App\Models\IdleSetting;
 use App\Models\RoleSetting;
 use App\Models\ActivityLog;
+use App\Events\Settings\SettingsViewedEvent;
 
 class EmployeeSettingsController extends Controller
 {
@@ -44,15 +45,13 @@ class EmployeeSettingsController extends Controller
             ];
         });
         
-        // Log employee activity
-        ActivityLog::logActivity(
-            userId: $user->id,
-            action: 'view_employee_settings',
-            subjectType: 'App\Models\IdleSetting',
-            subjectId: null,
-            ipAddress: $request->ip(),
-            device: $this->getDeviceInfo($request),
-            browser: $this->getBrowserInfo($request)
+        // Dispatch settings viewed event
+        SettingsViewedEvent::dispatch(
+            $user,
+            $request->ip(),
+            $this->getDeviceInfo($request),
+            $this->getBrowserInfo($request),
+            'employee'
         );
         
         return Inertia::render('Settings/Index', [

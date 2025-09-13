@@ -2,17 +2,13 @@
 
 namespace App\Listeners;
 
-use App\Events\UserActivityEvent;
+use App\Events\GlobalIdleSettingsUpdatedEvent;
 use App\Models\ActivityLog;
-use Illuminate\Contracts\Queue\ShouldQueue;
-use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Events\Attributes\AsEventListener;
 
 #[AsEventListener]
-class LogUserActivity implements ShouldQueue
+class LogGlobalIdleSettingsUpdated
 {
-    use InteractsWithQueue;
-
     /**
      * Create the event listener.
      */
@@ -24,13 +20,13 @@ class LogUserActivity implements ShouldQueue
     /**
      * Handle the event.
      */
-    public function handle(UserActivityEvent $event): void
+    public function handle(GlobalIdleSettingsUpdatedEvent $event): void
     {
         ActivityLog::logActivity(
-            userId: $event->user->id,
-            action: $event->action,
-            subjectType: $event->subjectType,
-            subjectId: $event->subjectId,
+            userId: $event->userId,
+            action: 'update_idle_setting',
+            subjectType: 'App\Models\IdleSetting',
+            subjectId: $event->settings->id,
             ipAddress: $event->ipAddress,
             device: $event->device,
             browser: $event->browser

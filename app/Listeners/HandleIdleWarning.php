@@ -26,10 +26,17 @@ class HandleIdleWarning implements ShouldQueue
      */
     public function handle(IdleWarningEvent $event): void
     {
-        // Log the idle warning
+        // Log the idle warning with descriptive action name
+        $actionName = match($event->warningCount) {
+            1 => 'create_idle_alert',
+            2 => 'create_idle_warning', 
+            3 => 'create_idle_logout',
+            default => 'create_idle_warning_' . $event->warningCount
+        };
+        
         ActivityLog::logActivity(
             userId: $event->user->id,
-            action: 'idle_warning',
+            action: $actionName,
             subjectType: 'App\Models\IdleSession',
             subjectId: $event->sessionId,
             ipAddress: request()->ip(),

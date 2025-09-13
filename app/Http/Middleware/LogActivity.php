@@ -140,16 +140,21 @@ class LogActivity
             $modelName = match ($controllerName) {
                 'UserController' => 'user',
                 'EmployeeController' => 'employee',
+                'AdminSettingsController' => 'idle_setting',
+                'SettingsController' => 'idle_setting',
+                'EmployeeSettingsController' => 'idle_setting',
+                'AdminDashboardController' => 'admin_dashboard',
+                'EmployeeDashboardController' => 'employee_dashboard',
                 default => strtolower(str_replace('Controller', '', $controllerName))
             };
             
             return match (strtolower($method)) {
-                'index' => "view_{$modelName}s",  // view_users, view_employees
+                'index' => "view_{$modelName}",   // view_user, view_employee, view_idle_setting
                 'show' => "view_{$modelName}",    // view_user, view_employee
                 'create' => "view_{$modelName}_form",
                 'edit' => "view_{$modelName}_edit",
                 'store' => "create_{$modelName}",  // create_user, create_employee
-                'update' => "update_{$modelName}", // update_user, update_employee
+                'update' => "update_{$modelName}", // update_user, update_employee, update_idle_setting
                 'destroy' => "delete_{$modelName}", // delete_user, delete_employee
                 default => strtolower($method) . "_{$modelName}",
             };

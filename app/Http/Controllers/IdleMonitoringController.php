@@ -39,7 +39,7 @@ class IdleMonitoringController extends Controller
         // Fire event for activity logging
         event(new UserActivityEvent(
             user: $user,
-            action: 'idle_session_started',
+            action: 'create_idle_session',
             subjectType: 'App\Models\IdleSession',
             subjectId: $idleSession->id,
             ipAddress: $request->ip(),
@@ -149,7 +149,7 @@ class IdleMonitoringController extends Controller
         // Fire event for idle session start (for each alert/warning)
         event(new UserActivityEvent(
             user: $user,
-            action: 'idle_session_started',
+            action: 'create_idle_session',
             subjectType: 'App\Models\IdleSession',
             subjectId: $idleSession->id,
             ipAddress: $request->ip(),
@@ -166,12 +166,12 @@ class IdleMonitoringController extends Controller
             timeoutSeconds: $idleSettings->idle_timeout
         ));
         
-        // Log each alert/warning as an activity
+        // Log each alert/warning as an activity with descriptive names
         $actionName = match($warningCount) {
-            1 => 'idle_alert_first',
-            2 => 'idle_warning_second', 
-            3 => 'idle_warning_third',
-            default => 'idle_warning_' . $warningCount
+            1 => 'create_idle_alert',
+            2 => 'create_idle_warning', 
+            3 => 'create_idle_logout',
+            default => 'create_idle_warning_' . $warningCount
         };
         
         event(new UserActivityEvent(
@@ -470,7 +470,7 @@ class IdleMonitoringController extends Controller
      */
     private function getDeviceInfo(Request $request): string
     {
-        $userAgent = $request->userAgent();
+        $userAgent = $request->userAgent() ?? '';
         
         if (str_contains($userAgent, 'Mobile')) {
             return 'Mobile';
@@ -486,7 +486,7 @@ class IdleMonitoringController extends Controller
      */
     private function getBrowserInfo(Request $request): string
     {
-        $userAgent = $request->userAgent();
+        $userAgent = $request->userAgent() ?? '';
         
         if (str_contains($userAgent, 'Chrome')) {
             return 'Chrome';

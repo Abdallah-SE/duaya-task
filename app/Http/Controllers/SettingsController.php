@@ -10,6 +10,8 @@ use App\Models\IdleSetting;
 use App\Models\RoleSetting;
 use App\Models\ActivityLog;
 use App\Events\UserActivityEvent;
+use App\Events\GlobalIdleSettingsUpdatedEvent;
+use App\Events\RoleMonitoringToggledEvent;
 
 class SettingsController extends Controller
 {
@@ -70,16 +72,18 @@ class SettingsController extends Controller
             $request->max_idle_warnings
         );
         
-        // Log activity
-        ActivityLog::logActivity(
-            userId: $user->id,
-            action: 'update_global_idle_settings',
-            subjectType: 'App\Models\IdleSetting',
-            subjectId: $settings->id,
-            ipAddress: $request->ip(),
-            device: $this->getDeviceInfo($request),
-            browser: $this->getBrowserInfo($request)
-        );
+        // Get old settings for comparison
+        $oldSettings = IdleSetting::getDefault();
+        
+        // Dispatch event for global settings update
+        event(new GlobalIdleSettingsUpdatedEvent(
+            $settings,
+            Auth::id(),
+            $request->getClientIp(),
+            $this->getDeviceInfo($request),
+            $this->getBrowserInfo($request),
+            $oldSettings
+        ));
         
         return redirect()->back()->with('success', 'Settings updated successfully.');
     }
@@ -203,16 +207,15 @@ class SettingsController extends Controller
             ['idle_monitoring_enabled' => $request->enabled]
         );
 
-        // Log admin activity
-        ActivityLog::logActivity(
-            userId: $user->id,
-            action: 'toggle_role_monitoring',
-            subjectType: 'App\Models\RoleSetting',
-            subjectId: $roleSetting->id,
-            ipAddress: $request->ip(),
-            device: $this->getDeviceInfo($request),
-            browser: $this->getBrowserInfo($request)
-        );
+        // Dispatch event for role monitoring toggle
+        event(new RoleMonitoringToggledEvent(
+            $roleSetting,
+            Auth::id(),
+            $request->getClientIp(),
+            $this->getDeviceInfo($request),
+            $this->getBrowserInfo($request),
+            $request->enabled
+        ));
 
         return response()->json([
             'message' => "Monitoring " . ($request->enabled ? 'enabled' : 'disabled') . " for role: " . $role->name,
