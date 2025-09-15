@@ -5,8 +5,9 @@ use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\AdminDashboardController;
 use App\Http\Controllers\EmployeeDashboardController;
 use App\Http\Controllers\ActivityController;
-use App\Http\Controllers\SettingsController;
 use App\Http\Controllers\AuthController;
+use App\Http\Controllers\AdminAuthController;
+use App\Http\Controllers\EmployeeAuthController;
 use App\Http\Controllers\IdleMonitoringController;
 use App\Http\Controllers\UserController;
 use App\Http\Controllers\EmployeeController;
@@ -17,17 +18,23 @@ use Inertia\Inertia;
 
 // Authentication routes (guest only)
 Route::middleware('guest')->group(function () {
+    // General login route
     Route::get('/login', [AuthController::class, 'showLogin'])->name('login');
     Route::post('/login', [AuthController::class, 'login']);
     
-    // Separate login routes
-    Route::get('/admin/login', [AuthController::class, 'showAdminLogin'])->name('admin.login');
-    Route::post('/admin/login', [AuthController::class, 'adminLogin']);
-    Route::get('/employee/login', [AuthController::class, 'showEmployeeLogin'])->name('employee.login');
-    Route::post('/employee/login', [AuthController::class, 'employeeLogin']);
+    // Admin authentication routes
+    Route::get('/admin/login', [AdminAuthController::class, 'showLogin'])->name('admin.login');
+    Route::post('/admin/login', [AdminAuthController::class, 'login']);
+    
+    // Employee authentication routes
+    Route::get('/employee/login', [EmployeeAuthController::class, 'showLogin'])->name('employee.login');
+    Route::post('/employee/login', [EmployeeAuthController::class, 'login']);
 });
 
+// Logout routes
 Route::post('/logout', [AuthController::class, 'logout'])->name('logout');
+Route::post('/admin/logout', [AdminAuthController::class, 'logout'])->name('admin.logout');
+Route::post('/employee/logout', [EmployeeAuthController::class, 'logout'])->name('employee.logout');
 
 // Admin Dashboard (web guard required)
 Route::prefix('admin')->middleware(['auth', 'role:admin', 'log.activity'])->group(function () {
@@ -85,18 +92,6 @@ Route::middleware(['auth', 'log.activity'])->group(function () {
     Route::get('/activities/user/{user}', [ActivityController::class, 'getUserActivities'])->name('activities.user');
     Route::post('/activities/penalty', [ActivityController::class, 'applyPenalty'])->name('activities.penalty');
     
-    // General settings (fallback for users without specific role-based settings)
-    Route::get('/settings', [SettingsController::class, 'index'])->name('settings.index');
-    Route::put('/settings', [SettingsController::class, 'update'])->name('settings.update');
-    Route::get('/settings/api', [SettingsController::class, 'getSettings'])->name('settings.api');
-    
-    // Role settings management (admin only) - keeping for backward compatibility
-    Route::put('/settings/roles', [SettingsController::class, 'updateRoleSettings'])->name('settings.roles');
-    Route::patch('/settings/roles/toggle', [SettingsController::class, 'toggleRoleMonitoring'])->name('settings.roles.toggle');
-    Route::patch('/settings/global/timeout', [SettingsController::class, 'updateTimeout'])->name('settings.global.timeout');
-    
-    // User monitoring status check (general)
-    Route::get('/monitoring-status', [SettingsController::class, 'getUserMonitoringStatus'])->name('monitoring.status');
 });
 
 // All routes below have CSRF protection by default (Laravel built-in)
@@ -106,55 +101,7 @@ Route::get('/csrf-token', function () {
     return response()->json(['csrf_token' => csrf_token()]);
 })->name('csrf.token');
 
-Route::get('/debug-idle', function () {
-    $user = Auth::user();
-    if (!$user) {
-        return response()->json(['error' => 'Not authenticated']);
-    }
-    
-    $userSettings = $user->getIdleSettings();
-    $isIdleMonitoringEnabled = $user->isIdleMonitoringEnabled();
-    
-    // Check IdleSession table
-    $idleSessions = \App\Models\IdleSession::where('user_id', $user->id)->get();
-    $totalIdleSessions = \App\Models\IdleSession::count();
-    
-    return response()->json([
-        'user_id' => $user->id,
-        'user_roles' => $user->getRoleNames()->toArray(),
-        'isIdleMonitoringEnabled' => $isIdleMonitoringEnabled,
-        'role_setting_check' => \App\Models\RoleSetting::isIdleMonitoringEnabledForRole('employee'),
-        'userSettings' => $userSettings->toArray(),
-        'idle_sessions_for_user' => $idleSessions->toArray(),
-        'total_idle_sessions' => $totalIdleSessions,
-        'timestamp' => now()->toDateTimeString(),
-    ]);
-});
 
 // Web route for idle monitoring (CSRF protected by default)
 Route::post('/idle-monitoring/handle-warning', [IdleMonitoringController::class, 'handleIdleWarning'])->middleware(['auth', 'log.activity']);
 
-// Test route for idle monitoring
-Route::get('/test-idle-monitoring', function () {
-    $user = Auth::user();
-    if (!$user) {
-        return response()->json(['error' => 'Not authenticated']);
-    }
-    
-    $userSettings = $user->getIdleSettings();
-    $isIdleMonitoringEnabled = $user->isIdleMonitoringEnabled();
-    
-    return Inertia::render('TestIdleMonitoring', [
-        'user' => $user,
-        'userSettings' => $userSettings,
-        'initialSettings' => $userSettings,
-        'canControlIdleMonitoring' => $user->canControlIdleMonitoring(),
-        'isIdleMonitoringEnabled' => $isIdleMonitoringEnabled,
-        'testData' => [
-            'idle_timeout' => $userSettings->idle_timeout,
-            'max_warnings' => $userSettings->max_idle_warnings,
-            'monitoring_enabled' => $isIdleMonitoringEnabled,
-            'user_roles' => $user->getRoleNames()->toArray(),
-        ]
-    ]);
-})->middleware(['auth', 'log.activity']);

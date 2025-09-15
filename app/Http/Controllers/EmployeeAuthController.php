@@ -6,52 +6,46 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Validation\ValidationException;
 use Inertia\Inertia;
-use App\Models\IdleSetting;
 use App\Events\UserLoginEvent;
 use App\Events\UserLogoutEvent;
 
-class AuthController extends Controller
+class EmployeeAuthController extends Controller
 {
     /**
-     * Show the login form.
+     * Show the employee login form.
      */
     public function showLogin()
     {
-        return Inertia::render('Auth/Login');
+        return Inertia::render('Auth/EmployeeLogin');
     }
     
-    
     /**
-     * Handle user login.
+     * Handle employee login.
      */
     public function login(Request $request)
     {
         $credentials = $request->validate([
             'email' => 'required|email',
             'password' => 'required|string',
-            'role' => 'required|in:admin,employee',
         ]);
         
-        if (Auth::attempt([
-            'email' => $credentials['email'],
-            'password' => $credentials['password']
-        ])) {
-            $request->session()->regenerate();
-            
+        if (Auth::attempt($credentials)) {
             $user = Auth::user();
             
-            // Check if user has the requested role
-            if (!$user->hasRole($credentials['role'])) {
+            // Check if user has employee role
+            if (!$user->hasRole('employee')) {
                 Auth::logout();
                 throw ValidationException::withMessages([
-                    'email' => 'Access denied. You do not have permission for this role.',
+                    'email' => 'Access denied. Employee credentials required.',
                 ]);
             }
+            
+            $request->session()->regenerate();
             
             // Fire login event
             event(new UserLoginEvent(
                 user: $user,
-                loginType: 'login_user',
+                loginType: 'login_employee',
                 ipAddress: $request->ip(),
                 device: $this->getDeviceInfo($request),
                 browser: $this->getBrowserInfo($request)
@@ -60,12 +54,7 @@ class AuthController extends Controller
             // Get or create idle settings for the user
             $user->getIdleSettings();
             
-            // Redirect based on role
-            if ($user->hasRole('admin')) {
-                return redirect()->intended('/admin/dashboard');
-            } else {
-                return redirect()->intended('/employee/dashboard');
-            }
+            return redirect()->intended('/employee/dashboard');
         }
         
         throw ValidationException::withMessages([
@@ -73,9 +62,8 @@ class AuthController extends Controller
         ]);
     }
     
-    
     /**
-     * Handle user logout.
+     * Handle employee logout.
      */
     public function logout(Request $request)
     {
@@ -95,7 +83,7 @@ class AuthController extends Controller
         $request->session()->invalidate();
         $request->session()->regenerateToken();
         
-        return redirect('/login')->with('message', 'You have been successfully logged out.');
+        return redirect('/employee/login')->with('message', 'You have been successfully logged out.');
     }
     
     /**

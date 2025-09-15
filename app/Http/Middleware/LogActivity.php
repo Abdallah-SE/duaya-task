@@ -141,7 +141,6 @@ class LogActivity
                 'UserController' => 'user',
                 'EmployeeController' => 'employee',
                 'AdminSettingsController' => 'idle_setting',
-                'SettingsController' => 'idle_setting',
                 'EmployeeSettingsController' => 'idle_setting',
                 'AdminDashboardController' => 'admin_dashboard',
                 'EmployeeDashboardController' => 'employee_dashboard',
