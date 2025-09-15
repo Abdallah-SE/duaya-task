@@ -132,7 +132,7 @@
 </template>
 
 <script setup>
-import { ref, computed, watch } from 'vue'
+import { ref, computed, watch, onMounted, onBeforeUnmount, onUnmounted } from 'vue'
 
 const props = defineProps({
   data: {
@@ -254,8 +254,42 @@ const resetFilters = () => {
   currentPage.value = 1
 }
 
+// Component state tracking
+const isMounted = ref(false)
+
 // Watch for data changes
-watch(() => props.data, () => {
+const dataWatcher = watch(() => props.data, () => {
+  if (isMounted.value) {
+    currentPage.value = 1
+  }
+})
+
+// Cleanup function
+const cleanup = () => {
+  // Stop watcher
+  if (dataWatcher && typeof dataWatcher === 'function') {
+    dataWatcher()
+  }
+  
+  // Reset state
+  searchQuery.value = ''
+  sortColumn.value = ''
+  sortDirection.value = 'asc'
   currentPage.value = 1
+  
+  isMounted.value = false
+}
+
+// Lifecycle hooks
+onMounted(() => {
+  isMounted.value = true
+})
+
+onBeforeUnmount(() => {
+  cleanup()
+})
+
+onUnmounted(() => {
+  cleanup()
 })
 </script>

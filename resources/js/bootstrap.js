@@ -44,8 +44,13 @@ window.axios.interceptors.response.use(
                     // Update axios default header
                     window.axios.defaults.headers.common['X-CSRF-TOKEN'] = response.data.csrf_token;
                     
-                    console.log('CSRF token refreshed successfully');
-                    return;
+                    console.log('CSRF token refreshed successfully, retrying original request...');
+                    
+                    // Retry the original request with the new token
+                    const originalRequest = error.config;
+                    originalRequest.headers['X-CSRF-TOKEN'] = response.data.csrf_token;
+                    
+                    return axios(originalRequest);
                 }
             } catch (refreshError) {
                 console.error('Failed to refresh CSRF token:', refreshError);

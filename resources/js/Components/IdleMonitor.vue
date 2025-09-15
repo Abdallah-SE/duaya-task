@@ -261,9 +261,10 @@ const handleWarningTimeout = () => {
         return
     }
     
-    // If we've reached the max warnings, the backend will handle logout
-    // Don't do anything here - let the API response handle it
-    console.log('Max warnings reached - backend will handle logout')
+    // If we've reached the max warnings, still call API for the third warning
+    // The backend will handle logout after creating the third idle session
+    console.log('Max warnings reached - calling API for third warning')
+    handleIdleWarningAPI()
 }
 
 const showWarning = () => {
@@ -296,7 +297,7 @@ const handleIdleWarningAPI = async () => {
         console.log('🔍 Max warnings:', maxWarnings.value)
         console.log('🔍 Is third warning?', warningCount.value >= 3)
         
-        // Use web route (CSRF protected by Laravel)
+        // Use axios with automatic CSRF handling (configured in bootstrap.js)
         const response = await axios.post('/idle-monitoring/handle-warning', {
             warning_count: warningCount.value
         })
@@ -328,11 +329,23 @@ const handleIdleWarningAPI = async () => {
             return
         }
         
-        // Handle 419 error (CSRF token mismatch)
+        // Handle 419 error (CSRF token mismatch) - let the interceptor handle it
         if (error.response?.status === 419) {
-            console.error('Security token expired - refreshing page')
+            console.error('CSRF token mismatch - interceptor should handle this')
+            // The axios interceptor should handle CSRF refresh automatically
+            // If we get here, it means the interceptor failed, so reload
             window.location.reload()
             return
+        }
+        
+        // Handle network errors or other issues
+        if (error.code === 'NETWORK_ERROR' || !error.response) {
+            console.error('❌ Network error or no response')
+            // Don't redirect on network errors for first two warnings
+            if (warningCount.value < maxWarnings.value) {
+                console.log('Network error on warning', warningCount.value, '- continuing with warning sequence')
+                return
+            }
         }
         
         // Only redirect on max warning, not on network errors

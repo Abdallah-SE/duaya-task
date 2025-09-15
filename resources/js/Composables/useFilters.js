@@ -1,4 +1,4 @@
-import { ref, computed, watch } from 'vue'
+import { ref, computed, watch, onMounted, onBeforeUnmount, onUnmounted } from 'vue'
 
 export function useFilters(users) {
   // State
@@ -6,6 +6,12 @@ export function useFilters(users) {
   const searchQuery = ref('')
   const sortField = ref('created_at')
   const sortDirection = ref('desc')
+  
+  // Component state tracking
+  const isMounted = ref(false)
+  
+  // Watcher references for cleanup
+  const watchers = ref([])
 
   // Available filter options
   const availableFilters = ref([
@@ -235,9 +241,47 @@ export function useFilters(users) {
   }
 
   // Watch for changes in users to reset filters if needed
-  watch(() => users.value, () => {
+  const usersWatcher = watch(() => users.value, () => {
+    // Only proceed if component is still mounted
+    if (!isMounted.value) return
+    
     // Optionally reset filters when users change
     // clearFilters()
+  })
+  
+  // Add watcher to cleanup list
+  watchers.value.push(usersWatcher)
+
+  // Cleanup function
+  const cleanup = () => {
+    // Stop all watchers
+    watchers.value.forEach(watcher => {
+      if (watcher && typeof watcher === 'function') {
+        watcher()
+      }
+    })
+    watchers.value = []
+    
+    // Reset state
+    activeFilters.value = {}
+    searchQuery.value = ''
+    sortField.value = 'created_at'
+    sortDirection.value = 'desc'
+    
+    isMounted.value = false
+  }
+
+  // Lifecycle hooks
+  onMounted(() => {
+    isMounted.value = true
+  })
+
+  onBeforeUnmount(() => {
+    cleanup()
+  })
+
+  onUnmounted(() => {
+    cleanup()
   })
 
   return {
@@ -260,6 +304,7 @@ export function useFilters(users) {
     setSearchQuery,
     setSorting,
     getFilterValue,
-    hasFilter
+    hasFilter,
+    cleanup
   }
 }

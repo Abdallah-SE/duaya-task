@@ -24,6 +24,7 @@ class IdleSession extends Model
         'idle_started_at',
         'idle_ended_at',
         'duration_seconds',
+        'warning_number',
     ];
 
     /**
@@ -35,6 +36,7 @@ class IdleSession extends Model
             'idle_started_at' => 'datetime',
             'idle_ended_at' => 'datetime',
             'duration_seconds' => 'integer',
+            'warning_number' => 'integer',
             'created_at' => 'datetime',
             'updated_at' => 'datetime',
         ];
@@ -89,19 +91,29 @@ class IdleSession extends Model
     }
 
     /**
+     * Scope to get sessions by warning number.
+     */
+    public function scopeByWarningNumber(Builder $query, int $warningNumber): Builder
+    {
+        return $query->where('warning_number', $warningNumber);
+    }
+
+    /**
      * Create a new idle session.
      */
-    public static function startSession(int $userId): self
+    public static function startSession(int $userId, ?int $warningNumber = null): self
     {
         try {
             $session = static::create([
                 'user_id' => $userId,
                 'idle_started_at' => now(),
+                'warning_number' => $warningNumber,
             ]);
             
             Log::info('IdleSession::startSession - Session created successfully', [
                 'session_id' => $session->id,
                 'user_id' => $userId,
+                'warning_number' => $warningNumber,
                 'idle_started_at' => $session->idle_started_at,
                 'created_at' => $session->created_at
             ]);
@@ -162,6 +174,20 @@ class IdleSession extends Model
     }
 
     /**
+     * Get the warning type name.
+     */
+    public function getWarningTypeName(): string
+    {
+        return match($this->warning_number) {
+            1 => 'Alert',
+            2 => 'Warning', 
+            3 => 'Logout',
+            null => 'Unknown',
+            default => 'Warning ' . $this->warning_number
+        };
+    }
+
+    /**
      * Get the total idle time for a user.
      */
     public static function getTotalIdleTimeForUser(int $userId): int
@@ -185,6 +211,44 @@ class IdleSession extends Model
         }
 
         return $sessions->avg('duration_seconds');
+    }
+
+    /**
+     * Get warning type from warning number.
+     */
+    public static function getWarningTypeFromNumber(int $warningNumber): string
+    {
+        return match($warningNumber) {
+            1 => 'alert',
+            2 => 'warning', 
+            3 => 'logout',
+            default => 'unknown'
+        };
+    }
+
+    /**
+     * Get warning statistics for a user.
+     */
+    public static function getWarningStatsForUser(int $userId): array
+    {
+        $stats = static::where('user_id', $userId)
+            ->selectRaw('
+                warning_number,
+                COUNT(*) as count,
+                AVG(duration_seconds) as avg_duration,
+                MAX(created_at) as last_occurrence
+            ')
+            ->whereNotNull('warning_number')
+            ->groupBy('warning_number')
+            ->get()
+            ->keyBy('warning_number');
+
+        return [
+            'alert_count' => $stats->get(1)->count ?? 0,
+            'warning_count' => $stats->get(2)->count ?? 0,
+            'logout_count' => $stats->get(3)->count ?? 0,
+            'total_sessions' => static::where('user_id', $userId)->count(),
+        ];
     }
 
 }

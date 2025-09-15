@@ -19,7 +19,8 @@ return new class extends Migration
             $table->timestamp('idle_started_at'); // When idle state started
             $table->timestamp('idle_ended_at')->nullable(); // When idle state ended
             $table->unsignedInteger('duration_seconds')->nullable(); // Calculated duration (idle_ended_at - idle_started_at)
-            
+            $table->unsignedTinyInteger('warning_number')->nullable()->comment('Warning number: 1=alert, 2=warning, 3=logout');
+
             $table->timestamps();
             
             // Performance indexes

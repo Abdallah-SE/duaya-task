@@ -400,7 +400,7 @@ watch(() => props.show, (newShow) => {
 }
 
 .section-title {
-  @apply text-md font-medium text-gray-900 mb-4;
+  @apply text-base font-medium text-gray-900 mb-4;
 }
 
 .modal-footer {
