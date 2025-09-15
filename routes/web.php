@@ -99,22 +99,12 @@ Route::middleware(['auth', 'log.activity'])->group(function () {
     Route::get('/monitoring-status', [SettingsController::class, 'getUserMonitoringStatus'])->name('monitoring.status');
 });
 
-// API routes for idle monitoring (both admin and web guards)
-Route::prefix('api/idle-monitoring')->middleware(['auth', 'log.activity'])->group(function () {
-    Route::post('/start-session', [IdleMonitoringController::class, 'startIdleSession']);
-    Route::post('/end-session', [IdleMonitoringController::class, 'endIdleSession']);
-    Route::post('/handle-warning', [IdleMonitoringController::class, 'handleIdleWarning']);
-    Route::get('/settings', [IdleMonitoringController::class, 'getSettings']);
-    Route::post('/update-settings', [IdleMonitoringController::class, 'updateSettings']);
-    Route::get('/test-db', [IdleMonitoringController::class, 'testDatabase']);
-    Route::get('/stats', [IdleMonitoringController::class, 'getIdleStats']);
-    
-    // Role-based idle monitoring management (Admin only)
-    Route::middleware('role:admin')->group(function () {
-        Route::get('/role-settings', [IdleMonitoringController::class, 'getRoleSettings']);
-        Route::post('/role-settings', [IdleMonitoringController::class, 'updateRoleSettings']);
-    });
-});
+// All routes below have CSRF protection by default (Laravel built-in)
+
+// CSRF token refresh endpoint
+Route::get('/csrf-token', function () {
+    return response()->json(['csrf_token' => csrf_token()]);
+})->name('csrf.token');
 
 Route::get('/debug-idle', function () {
     $user = Auth::user();
@@ -141,7 +131,7 @@ Route::get('/debug-idle', function () {
     ]);
 });
 
-// Web route for idle monitoring (better CSRF handling)
+// Web route for idle monitoring (CSRF protected by default)
 Route::post('/idle-monitoring/handle-warning', [IdleMonitoringController::class, 'handleIdleWarning'])->middleware(['auth', 'log.activity']);
 
 // Test route for idle monitoring

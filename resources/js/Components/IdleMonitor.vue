@@ -296,15 +296,9 @@ const handleIdleWarningAPI = async () => {
         console.log('🔍 Max warnings:', maxWarnings.value)
         console.log('🔍 Is third warning?', warningCount.value >= 3)
         
-        // Use axios with proper CSRF handling
-        const response = await axios.post('/api/idle-monitoring/handle-warning', {
+        // Use web route (CSRF protected by Laravel)
+        const response = await axios.post('/idle-monitoring/handle-warning', {
             warning_count: warningCount.value
-        }, {
-            headers: {
-                'Content-Type': 'application/json',
-                'Accept': 'application/json',
-                'X-Requested-With': 'XMLHttpRequest'
-            }
         })
         
         console.log('✅ API call successful:', response.data)
@@ -329,21 +323,21 @@ const handleIdleWarningAPI = async () => {
         
         // Handle 401 error (user logged out)
         if (error.response?.status === 401) {
-            console.log('User logged out by server (401) - redirecting to login')
-            window.location.replace('/login?message=inactivity_logout')
+            console.log('Session expired - redirecting to login')
+            window.location.replace('/login?message=session_expired')
             return
         }
         
         // Handle 419 error (CSRF token mismatch)
         if (error.response?.status === 419) {
-            console.error('❌ CSRF token mismatch (419) - trying to refresh page')
+            console.error('Security token expired - refreshing page')
             window.location.reload()
             return
         }
         
         // Only redirect on max warning, not on network errors
         if (warningCount.value >= maxWarnings.value) {
-            console.log('Max warning reached - redirecting due to error')
+            console.log('Maximum warnings reached - redirecting to login')
             window.location.href = '/login?message=inactivity_logout'
         }
     }

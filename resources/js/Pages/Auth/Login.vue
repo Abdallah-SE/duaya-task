@@ -29,6 +29,30 @@
                         </p>
                     </div>
                 </div>
+
+                <!-- Session Expired Message -->
+                <div v-if="showSessionExpiredMessage" class="mt-4 p-4 bg-yellow-500/20 border border-yellow-500/30 rounded-lg">
+                    <div class="flex items-center">
+                        <svg class="h-5 w-5 text-yellow-400 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                        </svg>
+                        <p class="text-sm text-yellow-300">
+                            Your session has expired. Please log in again to continue.
+                        </p>
+                    </div>
+                </div>
+
+                <!-- Logout Success Message -->
+                <div v-if="showLogoutMessage" class="mt-4 p-4 bg-green-500/20 border border-green-500/30 rounded-lg">
+                    <div class="flex items-center">
+                        <svg class="h-5 w-5 text-green-400 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                        </svg>
+                        <p class="text-sm text-green-300">
+                            You have been successfully logged out.
+                        </p>
+                    </div>
+                </div>
             </div>
             
             <!-- Portal Selection Cards -->
@@ -137,19 +161,30 @@
 import { ref, onMounted } from 'vue'
 import { router } from '@inertiajs/vue3'
 
-// Check for inactivity logout message
+// Check for logout messages
 const showInactivityMessage = ref(false)
+const showSessionExpiredMessage = ref(false)
+const showLogoutMessage = ref(false)
 
 onMounted(() => {
-    // Check URL parameters for inactivity logout message
+    // Check URL parameters for logout messages
     const urlParams = new URLSearchParams(window.location.search)
-    if (urlParams.get('message') === 'inactivity_logout') {
+    const message = urlParams.get('message')
+    
+    if (message === 'inactivity_logout') {
         showInactivityMessage.value = true
-        // Auto-hide message after 10 seconds
-        setTimeout(() => {
-            showInactivityMessage.value = false
-        }, 10000)
+    } else if (message === 'session_expired') {
+        showSessionExpiredMessage.value = true
+    } else if (message === 'logout') {
+        showLogoutMessage.value = true
     }
+    
+    // Auto-hide messages after 10 seconds
+    setTimeout(() => {
+        showInactivityMessage.value = false
+        showSessionExpiredMessage.value = false
+        showLogoutMessage.value = false
+    }, 10000)
 })
 
 const goToAdminLogin = () => {

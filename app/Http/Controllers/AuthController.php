@@ -58,7 +58,7 @@ class AuthController extends Controller
             if (!$user->hasRole($credentials['role'])) {
                 Auth::logout();
                 throw ValidationException::withMessages([
-                    'email' => 'You do not have access with the selected role.',
+                    'email' => 'Access denied. You do not have permission for this role.',
                 ]);
             }
             
@@ -85,7 +85,7 @@ class AuthController extends Controller
         }
         
         throw ValidationException::withMessages([
-            'email' => 'The provided credentials do not match our records.',
+            'email' => 'Invalid email or password. Please check your credentials and try again.',
         ]);
     }
     
@@ -106,7 +106,7 @@ class AuthController extends Controller
             if (!$user->hasRole('admin')) {
                 Auth::logout();
                 throw ValidationException::withMessages([
-                    'email' => 'You do not have admin access.',
+                    'email' => 'Access denied. Administrator privileges required.',
                 ]);
             }
             
@@ -130,7 +130,7 @@ class AuthController extends Controller
         }
         
         throw ValidationException::withMessages([
-            'email' => 'The provided credentials do not match our records.',
+            'email' => 'Invalid email or password. Please check your credentials and try again.',
         ]);
     }
     
@@ -151,7 +151,7 @@ class AuthController extends Controller
             if (!$user->hasRole('employee')) {
                 Auth::logout();
                 throw ValidationException::withMessages([
-                    'email' => 'You do not have employee access.',
+                    'email' => 'Access denied. Employee credentials required.',
                 ]);
             }
             
@@ -175,7 +175,7 @@ class AuthController extends Controller
         }
         
         throw ValidationException::withMessages([
-            'email' => 'The provided credentials do not match our records.',
+            'email' => 'Invalid email or password. Please check your credentials and try again.',
         ]);
     }
     
@@ -203,7 +203,7 @@ class AuthController extends Controller
         $request->session()->invalidate();
         $request->session()->regenerateToken();
         
-        return redirect('/login');
+        return redirect('/login')->with('message', 'You have been successfully logged out.');
     }
     
     /**
