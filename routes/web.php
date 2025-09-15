@@ -1,7 +1,6 @@
 <?php
 
 use Illuminate\Support\Facades\Route;
-use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\AdminDashboardController;
 use App\Http\Controllers\EmployeeDashboardController;
 use App\Http\Controllers\ActivityController;
@@ -40,11 +39,7 @@ Route::post('/employee/logout', [EmployeeAuthController::class, 'logout'])->name
 Route::prefix('admin')->middleware(['auth', 'role:admin', 'log.activity'])->group(function () {
     Route::get('/dashboard', [AdminDashboardController::class, 'index'])->name('admin.dashboard');
     
-    // User Management Routes
-    Route::resource('users', UserController::class)->names('admin.users');
-    
-    // Employee Management Routes
-    Route::resource('employees', EmployeeController::class)->names('admin.employees');
+  
     
     // Admin Settings Routes
     Route::get('/settings', [AdminSettingsController::class, 'index'])->name('admin.settings');

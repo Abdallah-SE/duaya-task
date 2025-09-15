@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Inertia\Inertia;
 use App\Models\User;
 use App\Models\Employee;
@@ -83,9 +84,12 @@ class AdminDashboardController extends Controller
     private function getFilteredRecentActivities()
     {
         // Get activities from the last 7 days to avoid too much data
+        // Use select to only fetch needed columns and limit before processing
         $activities = ActivityLog::with(['user.employee', 'user.roles'])
+            ->select(['id', 'action', 'subject_type', 'subject_id', 'user_id', 'ip_address', 'device', 'browser', 'created_at'])
             ->where('created_at', '>=', now()->subDays(7))
             ->latest()
+            ->limit(100) // Limit before filtering to reduce memory usage
             ->get();
 
         // Filter out redundant activities
@@ -261,33 +265,88 @@ class AdminDashboardController extends Controller
      */
     private function getTaskSpecificStats()
     {
+        // Use raw queries for better performance on large datasets
+        $today = today();
+        $weekStart = now()->startOfWeek();
+        $weekEnd = now()->endOfWeek();
+        $sevenDaysAgo = now()->subDays(7);
+        
+        // Single query to get all activity statistics
+        $activityStats = DB::table('activity_logs')
+            ->selectRaw('
+                COUNT(*) as total_activities,
+                COUNT(CASE WHEN DATE(created_at) = ? THEN 1 END) as today_activities,
+                COUNT(CASE WHEN created_at BETWEEN ? AND ? THEN 1 END) as week_activities,
+                COUNT(CASE WHEN action IN ("create", "read", "update", "delete") THEN 1 END) as crud_operations,
+                COUNT(CASE WHEN action IN ("login_admin_user", "login_employee_user", "logout_admin_user", "logout_employee_user", "auto_logout_employee_user") THEN 1 END) as login_logout_events
+            ', [$today, $weekStart, $weekEnd])
+            ->first();
+        
+        // Single query to get all idle session statistics
+        $idleStats = DB::table('idle_sessions')
+            ->selectRaw('
+                COUNT(*) as total_sessions,
+                COUNT(CASE WHEN idle_ended_at IS NULL THEN 1 END) as active_sessions,
+                COUNT(CASE WHEN idle_ended_at IS NOT NULL THEN 1 END) as completed_sessions,
+                COALESCE(SUM(duration_seconds), 0) as total_idle_time,
+                COALESCE(AVG(duration_seconds), 0) as average_idle_time
+            ')
+            ->first();
+        
+        // Single query to get all penalty statistics
+        $penaltyStats = DB::table('penalties')
+            ->selectRaw('
+                COUNT(*) as total_penalties,
+                COUNT(CASE WHEN DATE(date) = ? THEN 1 END) as today_penalties,
+                COUNT(CASE WHEN date BETWEEN ? AND ? THEN 1 END) as week_penalties,
+                COUNT(CASE WHEN reason LIKE "%auto logout%" THEN 1 END) as auto_logout_penalties
+            ', [$today, $weekStart, $weekEnd])
+            ->first();
+        
+        // Single query to get user statistics
+        $userStats = DB::table('users')
+            ->selectRaw('COUNT(*) as total_users')
+            ->first();
+        
+        $employeeStats = DB::table('employees')
+            ->selectRaw('COUNT(*) as total_employees')
+            ->first();
+        
+        // Count active users with a more efficient query
+        $activeUsers = DB::table('users')
+            ->whereExists(function ($query) use ($sevenDaysAgo) {
+                $query->select(DB::raw(1))
+                    ->from('activity_logs')
+                    ->whereColumn('activity_logs.user_id', 'users.id')
+                    ->where('activity_logs.created_at', '>=', $sevenDaysAgo);
+            })
+            ->count();
+        
         return [
             // Activity Logs Statistics
-            'totalActivities' => ActivityLog::count(),
-            'todayActivities' => ActivityLog::whereDate('created_at', today())->count(),
-            'thisWeekActivities' => ActivityLog::whereBetween('created_at', [now()->startOfWeek(), now()->endOfWeek()])->count(),
-            'crudOperations' => ActivityLog::whereIn('action', ['create', 'read', 'update', 'delete'])->count(),
-            'loginLogoutEvents' => ActivityLog::whereIn('action', ['login_admin_user', 'login_employee_user', 'logout_admin_user', 'logout_employee_user', 'auto_logout_employee_user'])->count(),
+            'totalActivities' => $activityStats->total_activities,
+            'todayActivities' => $activityStats->today_activities,
+            'thisWeekActivities' => $activityStats->week_activities,
+            'crudOperations' => $activityStats->crud_operations,
+            'loginLogoutEvents' => $activityStats->login_logout_events,
             
             // Inactivity Tracking Statistics
-            'totalIdleSessions' => IdleSession::count(),
-            'activeIdleSessions' => IdleSession::whereNull('idle_ended_at')->count(),
-            'completedIdleSessions' => IdleSession::whereNotNull('idle_ended_at')->count(),
-            'totalIdleTime' => IdleSession::sum('duration_seconds'),
-            'averageIdleTime' => IdleSession::avg('duration_seconds') ?? 0,
+            'totalIdleSessions' => $idleStats->total_sessions,
+            'activeIdleSessions' => $idleStats->active_sessions,
+            'completedIdleSessions' => $idleStats->completed_sessions,
+            'totalIdleTime' => $idleStats->total_idle_time,
+            'averageIdleTime' => $idleStats->average_idle_time,
             
             // Penalty System Statistics
-            'totalPenalties' => Penalty::count(),
-            'todayPenalties' => Penalty::whereDate('date', today())->count(),
-            'thisWeekPenalties' => Penalty::whereBetween('date', [now()->startOfWeek(), now()->endOfWeek()])->count(),
-            'autoLogoutPenalties' => Penalty::where('reason', 'like', '%auto logout%')->count(),
+            'totalPenalties' => $penaltyStats->total_penalties,
+            'todayPenalties' => $penaltyStats->today_penalties,
+            'thisWeekPenalties' => $penaltyStats->week_penalties,
+            'autoLogoutPenalties' => $penaltyStats->auto_logout_penalties,
             
             // User Statistics
-            'totalUsers' => User::count(),
-            'totalEmployees' => Employee::count(),
-            'activeUsers' => User::whereHas('activityLogs', function($query) {
-                $query->where('created_at', '>=', now()->subDays(7));
-            })->count(),
+            'totalUsers' => $userStats->total_users,
+            'totalEmployees' => $employeeStats->total_employees,
+            'activeUsers' => $activeUsers,
         ];
     }
 
@@ -316,30 +375,40 @@ class AdminDashboardController extends Controller
      */
     private function getEmployeeActivityStats()
     {
-        return ActivityLog::with('user.employee')
+        // Use raw query for better performance
+        $stats = DB::table('activity_logs')
+            ->join('users', 'activity_logs.user_id', '=', 'users.id')
+            ->join('employees', 'users.id', '=', 'employees.user_id')
             ->selectRaw('
-                user_id,
-                COUNT(*) as activity_count,
-                COUNT(CASE WHEN DATE(created_at) = CURDATE() THEN 1 END) as today_activities,
-                COUNT(CASE WHEN created_at >= DATE_SUB(NOW(), INTERVAL 7 DAY) THEN 1 END) as week_activities
+                activity_logs.user_id,
+                users.name as user_name,
+                users.email as user_email,
+                employees.department,
+                employees.job_title,
+                COUNT(activity_logs.id) as activity_count,
+                COUNT(CASE WHEN DATE(activity_logs.created_at) = CURDATE() THEN 1 END) as today_activities,
+                COUNT(CASE WHEN activity_logs.created_at >= DATE_SUB(NOW(), INTERVAL 7 DAY) THEN 1 END) as week_activities
             ')
-            ->whereHas('user.employee')
-            ->groupBy('user_id')
+            ->groupBy('activity_logs.user_id', 'users.name', 'users.email', 'employees.department', 'employees.job_title')
             ->orderBy('activity_count', 'desc')
             ->limit(10)
-            ->get()
-            ->map(function ($stat) {
-                return [
-                    'user' => $stat->user ? [
-                        'name' => $stat->user->name,
-                        'email' => $stat->user->email,
-                        'employee' => $stat->user->employee,
-                    ] : null,
-                    'activity_count' => $stat->activity_count,
-                    'today_activities' => $stat->today_activities,
-                    'week_activities' => $stat->week_activities,
-                ];
-            });
+            ->get();
+        
+        return $stats->map(function ($stat) {
+            return [
+                'user' => [
+                    'name' => $stat->user_name,
+                    'email' => $stat->user_email,
+                    'employee' => [
+                        'department' => $stat->department,
+                        'job_title' => $stat->job_title,
+                    ],
+                ],
+                'activity_count' => $stat->activity_count,
+                'today_activities' => $stat->today_activities,
+                'week_activities' => $stat->week_activities,
+            ];
+        });
     }
 
     /**
@@ -347,23 +416,40 @@ class AdminDashboardController extends Controller
      */
     private function getPenaltyStats()
     {
-        return Penalty::with('user.employee')
-            ->latest('date')
+        // Use raw query for better performance
+        $penalties = DB::table('penalties')
+            ->join('users', 'penalties.user_id', '=', 'users.id')
+            ->leftJoin('employees', 'users.id', '=', 'employees.user_id')
+            ->select([
+                'penalties.id',
+                'penalties.reason',
+                'penalties.count',
+                'penalties.date',
+                'users.name as user_name',
+                'users.email as user_email',
+                'employees.department',
+                'employees.job_title'
+            ])
+            ->orderBy('penalties.date', 'desc')
             ->limit(20)
-            ->get()
-            ->map(function ($penalty) {
-                return [
-                    'id' => $penalty->id,
-                    'user' => $penalty->user ? [
-                        'name' => $penalty->user->name,
-                        'email' => $penalty->user->email,
-                        'employee' => $penalty->user->employee,
+            ->get();
+        
+        return $penalties->map(function ($penalty) {
+            return [
+                'id' => $penalty->id,
+                'user' => [
+                    'name' => $penalty->user_name,
+                    'email' => $penalty->user_email,
+                    'employee' => $penalty->department ? [
+                        'department' => $penalty->department,
+                        'job_title' => $penalty->job_title,
                     ] : null,
-                    'reason' => $penalty->reason,
-                    'count' => $penalty->count,
-                    'date' => $penalty->date,
-                ];
-            });
+                ],
+                'reason' => $penalty->reason,
+                'count' => $penalty->count,
+                'date' => $penalty->date,
+            ];
+        });
     }
 
     /**
@@ -371,30 +457,35 @@ class AdminDashboardController extends Controller
      */
     private function getIdleSessionStats()
     {
-        return IdleSession::with('user')
+        // Use raw query for better performance
+        $stats = DB::table('idle_sessions')
+            ->join('users', 'idle_sessions.user_id', '=', 'users.id')
             ->selectRaw('
-                user_id,
-                COUNT(*) as session_count,
-                SUM(duration_seconds) as total_duration,
-                AVG(duration_seconds) as avg_duration,
-                COUNT(CASE WHEN idle_ended_at IS NULL THEN 1 END) as active_sessions
+                idle_sessions.user_id,
+                users.name as user_name,
+                users.email as user_email,
+                COUNT(idle_sessions.id) as session_count,
+                COALESCE(SUM(idle_sessions.duration_seconds), 0) as total_duration,
+                COALESCE(AVG(idle_sessions.duration_seconds), 0) as avg_duration,
+                COUNT(CASE WHEN idle_sessions.idle_ended_at IS NULL THEN 1 END) as active_sessions
             ')
-            ->groupBy('user_id')
+            ->groupBy('idle_sessions.user_id', 'users.name', 'users.email')
             ->orderBy('session_count', 'desc')
             ->limit(10)
-            ->get()
-            ->map(function ($stat) {
-                return [
-                    'user' => $stat->user ? [
-                        'name' => $stat->user->name,
-                        'email' => $stat->user->email,
-                    ] : null,
-                    'session_count' => $stat->session_count,
-                    'total_duration' => $stat->total_duration,
-                    'avg_duration' => $stat->avg_duration,
-                    'active_sessions' => $stat->active_sessions,
-                ];
-            });
+            ->get();
+        
+        return $stats->map(function ($stat) {
+            return [
+                'user' => [
+                    'name' => $stat->user_name,
+                    'email' => $stat->user_email,
+                ],
+                'session_count' => $stat->session_count,
+                'total_duration' => $stat->total_duration,
+                'avg_duration' => $stat->avg_duration,
+                'active_sessions' => $stat->active_sessions,
+            ];
+        });
     }
 
     /**

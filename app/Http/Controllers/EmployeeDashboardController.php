@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Inertia\Inertia;
 use App\Models\User;
@@ -32,38 +33,16 @@ class EmployeeDashboardController extends Controller
         Log::info('🔍 EmployeeDashboardController - isIdleMonitoringEnabled: ' . ($isIdleMonitoringEnabled ? 'true' : 'false'));
         
         // Get simplified statistics for employee
-        $stats = [
-            'todayActivities' => ActivityLog::where('user_id', $user->id)
-                ->whereDate('created_at', today())
-                ->count(),
-            'myPenalties' => $user->penalties()->count(),
-            'myIdleSessions' => $user->idleSessions()->count(),
-        ];
+        $stats = $this->getEmployeeStats($user);
         
         // Get employee's recent activities (simplified)
-        $myActivities = ActivityLog::where('user_id', $user->id)
-            ->latest()
-            ->limit(8)
-            ->get()
-            ->map(function ($activity) {
-                return [
-                    'id' => $activity->id,
-                    'action' => $activity->action,
-                    'created_at' => $activity->created_at,
-                ];
-            });
+        $myActivities = $this->getEmployeeActivities($user);
         
         // Get employee's penalties (simplified)
-        $myPenalties = $user->penalties()
-            ->latest('date')
-            ->limit(5)
-            ->get();
+        $myPenalties = $this->getEmployeePenalties($user);
         
         // Get employee's idle sessions (simplified)
-        $myIdleSessions = $user->idleSessions()
-            ->latest()
-            ->limit(5)
-            ->get();
+        $myIdleSessions = $this->getEmployeeIdleSessions($user);
         
         $data = [
             'user' => $user,
@@ -99,5 +78,70 @@ class EmployeeDashboardController extends Controller
         } else {
             return "Good evening, {$name}!";
         }
+    }
+    
+    /**
+     * Get optimized employee statistics
+     */
+    private function getEmployeeStats($user)
+    {
+        // Single query to get all employee statistics
+        $stats = DB::table('activity_logs')
+            ->selectRaw('
+                COUNT(CASE WHEN DATE(created_at) = CURDATE() THEN 1 END) as today_activities
+            ')
+            ->where('user_id', $user->id)
+            ->first();
+        
+        $penaltyCount = DB::table('penalties')
+            ->where('user_id', $user->id)
+            ->count();
+        
+        $idleSessionCount = DB::table('idle_sessions')
+            ->where('user_id', $user->id)
+            ->count();
+        
+        return [
+            'todayActivities' => $stats->today_activities,
+            'myPenalties' => $penaltyCount,
+            'myIdleSessions' => $idleSessionCount,
+        ];
+    }
+    
+    /**
+     * Get optimized employee activities
+     */
+    private function getEmployeeActivities($user)
+    {
+        return DB::table('activity_logs')
+            ->select(['id', 'action', 'created_at'])
+            ->where('user_id', $user->id)
+            ->orderBy('created_at', 'desc')
+            ->limit(8)
+            ->get();
+    }
+    
+    /**
+     * Get optimized employee penalties
+     */
+    private function getEmployeePenalties($user)
+    {
+        return DB::table('penalties')
+            ->where('user_id', $user->id)
+            ->orderBy('date', 'desc')
+            ->limit(5)
+            ->get();
+    }
+    
+    /**
+     * Get optimized employee idle sessions
+     */
+    private function getEmployeeIdleSessions($user)
+    {
+        return DB::table('idle_sessions')
+            ->where('user_id', $user->id)
+            ->orderBy('created_at', 'desc')
+            ->limit(5)
+            ->get();
     }
 }
