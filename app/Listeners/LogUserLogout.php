@@ -28,9 +28,19 @@ class LogUserLogout
     public function handle(UserLogoutEvent $event): void
     {
         try {
+            // Determine the action based on logout type and context
+            $isAutoLogout = request()->is('idle-monitoring/handle-warning');
+            
+            if ($isAutoLogout) {
+                $action = 'auto_logout_employee_user';
+            } else {
+                // Use the logout type from the event (logout_admin_user, logout_employee_user, auto_logout_employee_user, etc.)
+                $action = $event->logoutType;
+            }
+            
             ActivityLog::logActivity(
                 userId: $event->user->id,
-                action: 'logout_user',
+                action: $action,
                 subjectType: 'App\Models\User',
                 subjectId: $event->user->id,
                 ipAddress: $event->ipAddress,
@@ -40,6 +50,7 @@ class LogUserLogout
 
             Log::info('User logout activity logged', [
                 'user_id' => $event->user->id,
+                'action' => $action,
                 'ip_address' => $event->ipAddress,
                 'device' => $event->device,
                 'browser' => $event->browser,

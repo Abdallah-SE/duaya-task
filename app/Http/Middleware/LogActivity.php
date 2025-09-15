@@ -106,6 +106,11 @@ class LogActivity
         // Determine the action based on HTTP method and route
         $action = $this->determineAction($method, $route);
         
+        // Skip logging if action is 'skip_logging'
+        if ($action === 'skip_logging') {
+            return;
+        }
+        
         // Get subject information if available
         $subjectType = $this->getSubjectType($route);
         $subjectId = $this->getSubjectId($route);
@@ -144,8 +149,16 @@ class LogActivity
                 'EmployeeSettingsController' => 'idle_setting',
                 'AdminDashboardController' => 'admin_dashboard',
                 'EmployeeDashboardController' => 'employee_dashboard',
+                'IdleMonitoringController' => 'idle_monitoring',
                 default => strtolower(str_replace('Controller', '', $controllerName))
             };
+            
+            // Special handling for idle monitoring warnings
+            if (strtolower($method) === 'handleidlewarning') {
+                // Don't log warning activities, only auto-logout is logged via UserLogoutEvent
+                // Return a special action that will be filtered out later
+                return 'skip_logging';
+            }
             
             return match (strtolower($method)) {
                 'index' => "view_{$modelName}",   // view_user, view_employee, view_idle_setting

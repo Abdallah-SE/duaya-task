@@ -45,7 +45,7 @@ class EmployeeAuthController extends Controller
             // Fire login event
             event(new UserLoginEvent(
                 user: $user,
-                loginType: 'login_employee',
+                loginType: 'login_employee_user',
                 ipAddress: $request->ip(),
                 device: $this->getDeviceInfo($request),
                 browser: $this->getBrowserInfo($request)
@@ -73,6 +73,7 @@ class EmployeeAuthController extends Controller
             // Fire logout event
             event(new UserLogoutEvent(
                 user: $user,
+                logoutType: 'logout_employee_user',
                 ipAddress: $request->ip(),
                 device: $this->getDeviceInfo($request),
                 browser: $this->getBrowserInfo($request)

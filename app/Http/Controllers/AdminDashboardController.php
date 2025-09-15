@@ -205,14 +205,20 @@ class AdminDashboardController extends Controller
             case 'update_idle_timeout':
                 $details['description'] = 'Modified idle timeout settings';
                 break;
-            case 'admin_login':
+            case 'login_admin_user':
                 $details['description'] = 'Admin user logged in';
                 break;
-            case 'employee_login':
-                $details['description'] = 'Employee logged in';
+            case 'login_employee_user':
+                $details['description'] = 'Employee user logged in';
                 break;
-            case 'logged_out':
-                $details['description'] = 'User logged out';
+            case 'logout_admin_user':
+                $details['description'] = 'Admin user logged out';
+                break;
+            case 'logout_employee_user':
+                $details['description'] = 'Employee user logged out';
+                break;
+            case 'auto_logout_employee_user':
+                $details['description'] = 'Employee auto-logged out due to inactivity';
                 break;
             default:
                 $details['description'] = ucfirst(str_replace('_', ' ', $activity->action));
@@ -234,7 +240,7 @@ class AdminDashboardController extends Controller
     {
         $highImportance = [
             'delete_user', 'delete_employee', 'create_user', 'create_employee',
-            'admin_login', 'employee_login', 'logged_out', 'update_idle_timeout'
+            'login_admin_user', 'login_employee_user', 'logout_admin_user', 'logout_employee_user', 'auto_logout_employee_user', 'update_idle_timeout'
         ];
 
         $mediumImportance = [
@@ -261,7 +267,7 @@ class AdminDashboardController extends Controller
             'todayActivities' => ActivityLog::whereDate('created_at', today())->count(),
             'thisWeekActivities' => ActivityLog::whereBetween('created_at', [now()->startOfWeek(), now()->endOfWeek()])->count(),
             'crudOperations' => ActivityLog::whereIn('action', ['create', 'read', 'update', 'delete'])->count(),
-            'loginLogoutEvents' => ActivityLog::whereIn('action', ['admin_login', 'employee_login', 'logged_out'])->count(),
+            'loginLogoutEvents' => ActivityLog::whereIn('action', ['login_admin_user', 'login_employee_user', 'logout_admin_user', 'logout_employee_user', 'auto_logout_employee_user'])->count(),
             
             // Inactivity Tracking Statistics
             'totalIdleSessions' => IdleSession::count(),

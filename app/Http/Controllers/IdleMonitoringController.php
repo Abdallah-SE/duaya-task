@@ -12,6 +12,7 @@ use App\Models\ActivityLog;
 use App\Events\UserActivityEvent;
 use App\Events\IdleWarningEvent;
 use App\Events\PenaltyAppliedEvent;
+use App\Events\UserLogoutEvent;
 
 class IdleMonitoringController extends Controller
 {
@@ -292,6 +293,15 @@ class IdleMonitoringController extends Controller
             
             Log::info('Logging out user due to third warning: ' . $user->id);
             
+            // Fire logout event for activity logging
+            event(new UserLogoutEvent(
+                user: $user,
+                logoutType: 'auto_logout_employee_user',
+                ipAddress: $request->ip(),
+                device: $this->getDeviceInfo($request),
+                browser: $this->getBrowserInfo($request)
+            ));
+            
             // Logout the user
             Auth::logout();
             $request->session()->invalidate();
@@ -312,6 +322,15 @@ class IdleMonitoringController extends Controller
                 'error' => $e->getMessage(),
                 'trace' => $e->getTraceAsString()
             ]);
+            
+            // Fire logout event for activity logging (even if penalty creation failed)
+            event(new UserLogoutEvent(
+                user: $user,
+                logoutType: 'auto_logout_employee_user',
+                ipAddress: $request->ip(),
+                device: $this->getDeviceInfo($request),
+                browser: $this->getBrowserInfo($request)
+            ));
             
             // Still logout even if penalty creation fails
             Auth::logout();

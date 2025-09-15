@@ -82,9 +82,13 @@ class AuthController extends Controller
         $user = Auth::user();
         
         if ($user) {
+            // Determine logout type based on user role
+            $logoutType = $user->hasRole('admin') ? 'logout_admin_user' : 'logout_employee_user';
+            
             // Fire logout event
             event(new UserLogoutEvent(
                 user: $user,
+                logoutType: $logoutType,
                 ipAddress: $request->ip(),
                 device: $this->getDeviceInfo($request),
                 browser: $this->getBrowserInfo($request)

@@ -20,18 +20,21 @@ class UserLogoutEvent
     public string $device;
     public string $browser;
     public array $metadata;
+    public string $logoutType;
 
     /**
      * Create a new event instance.
      */
     public function __construct(
         User $user,
+        string $logoutType,
         ?string $ipAddress = null,
         ?string $device = null,
         ?string $browser = null,
         array $metadata = []
     ) {
         $this->user = $user;
+        $this->logoutType = $logoutType;
         $this->ipAddress = $ipAddress ?? request()->ip();
         $this->device = $device ?? $this->getDeviceInfo();
         $this->browser = $browser ?? $this->getBrowserInfo();

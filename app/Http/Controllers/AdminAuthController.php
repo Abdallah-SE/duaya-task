@@ -45,7 +45,7 @@ class AdminAuthController extends Controller
             // Fire login event
             event(new UserLoginEvent(
                 user: $user,
-                loginType: 'login_admin',
+                loginType: 'login_admin_user',
                 ipAddress: $request->ip(),
                 device: $this->getDeviceInfo($request),
                 browser: $this->getBrowserInfo($request)
@@ -73,6 +73,7 @@ class AdminAuthController extends Controller
             // Fire logout event
             event(new UserLogoutEvent(
                 user: $user,
+                logoutType: 'logout_admin_user',
                 ipAddress: $request->ip(),
                 device: $this->getDeviceInfo($request),
                 browser: $this->getBrowserInfo($request)
