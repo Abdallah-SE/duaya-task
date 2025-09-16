@@ -25,7 +25,7 @@ class UserController extends Controller
     {
         $this->authorize('viewAny', User::class);
         
-        $currentUser = auth('admin')->user() ?? Auth::user();
+        $currentUser = Auth::user();
         
         // Build query based on user role
         $query = User::with(['roles', 'penalties'])
@@ -81,7 +81,7 @@ class UserController extends Controller
      */
     public function store(StoreUserRequest $request)
     {
-        $currentUser = auth('admin')->user() ?? Auth::user();
+        $currentUser = Auth::user();
         
         $user = User::create([
             'name' => $request->input('name'),
@@ -114,7 +114,7 @@ class UserController extends Controller
      */
     public function update(UpdateUserRequest $request, User $user)
     {
-        $currentUser = auth('admin')->user() ?? Auth::user();
+        $currentUser = Auth::user();
         
         $user->update([
             'name' => $request->input('name'),
@@ -151,7 +151,7 @@ class UserController extends Controller
         
         $user->delete();
         
-        $currentUser = auth('admin')->user() ?? Auth::user();
+        $currentUser = Auth::user();
         $redirectRoute = $currentUser->hasRole('admin') ? 'admin.users.index' : 'employee.users.index';
         return redirect()->route($redirectRoute)
             ->with('success', 'User deleted successfully.');

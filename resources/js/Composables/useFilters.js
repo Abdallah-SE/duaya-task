@@ -90,7 +90,7 @@ export function useFilters(users) {
       filtered = filtered.filter(user => 
         user.name?.toLowerCase().includes(query) ||
         user.email?.toLowerCase().includes(query) ||
-        user.roles?.some(role => role.name.toLowerCase().includes(query))
+        user.role_names?.some(role => role.toLowerCase().includes(query))
       )
     }
 
@@ -110,7 +110,7 @@ export function useFilters(users) {
         case 'role':
           if (Array.isArray(value) && value.length > 0) {
             filtered = filtered.filter(user => 
-              user.roles?.some(role => value.includes(role.name))
+              user.role_names?.some(role => value.includes(role))
             )
           }
           break

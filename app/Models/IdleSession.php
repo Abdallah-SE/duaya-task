@@ -110,13 +110,6 @@ class IdleSession extends Model
                 'warning_number' => $warningNumber,
             ]);
             
-            Log::info('IdleSession::startSession - Session created successfully', [
-                'session_id' => $session->id,
-                'user_id' => $userId,
-                'warning_number' => $warningNumber,
-                'idle_started_at' => $session->idle_started_at,
-                'created_at' => $session->created_at
-            ]);
             
             return $session;
         } catch (\Exception $e) {

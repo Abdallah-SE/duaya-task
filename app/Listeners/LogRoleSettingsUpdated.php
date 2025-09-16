@@ -38,11 +38,6 @@ class LogRoleSettingsUpdated implements ShouldQueue
                 'browser' => $event->browser,
             ]);
 
-            Log::info('Role settings updated activity logged', [
-                'user_id' => $event->user->id,
-                'updated_roles' => $event->updatedRoles,
-                'role_settings_count' => count($event->roleSettings),
-            ]);
         } catch (\Exception $e) {
             Log::error('Failed to log role settings updated activity', [
                 'user_id' => $event->user->id,

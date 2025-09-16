@@ -1,5 +1,5 @@
 <template>
-    <AppLayout :user="user" :user-settings="userSettings">
+    <AppLayout :user="user" :user-settings="userSettings" :is-idle-monitoring-enabled="isIdleMonitoringEnabled">
         <div class="space-y-6">
             <!-- Task Header -->
             <div class="bg-white shadow rounded-lg p-6">
@@ -227,6 +227,7 @@ import AppLayout from '@/Layouts/AppLayout.vue'
 const props = defineProps({
     user: Object,
     userSettings: Object,
+    isIdleMonitoringEnabled: Boolean,
     stats: Object,
     recentActivities: Array,
     allPenalties: Array,

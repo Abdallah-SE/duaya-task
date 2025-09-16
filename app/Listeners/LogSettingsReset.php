@@ -38,10 +38,6 @@ class LogSettingsReset implements ShouldQueue
                 'browser' => $event->browser,
             ]);
 
-            Log::info('Settings reset activity logged', [
-                'user_id' => $event->user->id,
-                'reset_type' => $event->resetType,
-            ]);
         } catch (\Exception $e) {
             Log::error('Failed to log settings reset activity', [
                 'user_id' => $event->user->id,

@@ -35,12 +35,6 @@ class LogUserActivityDeleted implements ShouldQueue
                 'browser' => $event->browser,
             ]);
 
-            Log::info('Model deleted activity logged', [
-                'user_id' => $event->user->id,
-                'model' => $event->getModelClass(),
-                'model_id' => $event->model->id,
-                'action' => $event->getAction(),
-            ]);
         } catch (\Exception $e) {
             Log::error('Failed to log model deleted activity', [
                 'user_id' => $event->user->id,

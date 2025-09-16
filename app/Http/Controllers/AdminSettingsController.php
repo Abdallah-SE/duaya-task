@@ -56,6 +56,7 @@ class AdminSettingsController extends Controller
         
         return Inertia::render('Admin/Settings/Index', [
             'user' => $user,
+            'isIdleMonitoringEnabled' => $user->isIdleMonitoringEnabled(),
             'globalSettings' => $globalSettings,
             'roleSettings' => $roleSettings,
             'roles' => $roles,

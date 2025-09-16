@@ -218,6 +218,9 @@
 <script setup>
 import { ref, onMounted } from 'vue'
 import { router } from '@inertiajs/vue3'
+import { useInertiaAuth } from '@/Composables/useInertiaAuth'
+
+const { loginEmployee, loading, errors } = useInertiaAuth()
 
 const form = ref({
     email: '',
@@ -225,20 +228,15 @@ const form = ref({
 })
 
 const processing = ref(false)
-const errors = ref({})
 const showPassword = ref(false)
 const copiedStates = ref({})
 
 const submit = () => {
     processing.value = true
-    errors.value = {}
     
-    router.post('/employee/login', form.value, {
+    loginEmployee(form.value, {
         onFinish: () => {
             processing.value = false
-        },
-        onError: (error) => {
-            errors.value = error
         }
     })
 }

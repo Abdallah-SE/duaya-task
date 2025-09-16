@@ -56,13 +56,6 @@ class LogGlobalSettingsUpdated implements ShouldQueue
                 'browser' => $event->browser,
             ]);
 
-            Log::info('Global settings updated activity logged', [
-                'user_id' => $event->user->id,
-                'settings_id' => $event->settings->id,
-                'changes' => $changes,
-                'new_timeout' => $event->settings->idle_timeout,
-                'new_max_warnings' => $event->settings->max_idle_warnings,
-            ]);
         } catch (\Exception $e) {
             Log::error('Failed to log global settings updated activity', [
                 'user_id' => $event->user->id,

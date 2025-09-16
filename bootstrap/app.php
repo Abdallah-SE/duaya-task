@@ -16,11 +16,20 @@ return Application::configure(basePath: dirname(__DIR__))
             \Illuminate\Http\Middleware\AddLinkHeadersForPreloadedAssets::class,
         ]);
         
+        $middleware->api(prepend: [
+            \Laravel\Sanctum\Http\Middleware\EnsureFrontendRequestsAreStateful::class,
+        ]);
+        
         $middleware->alias([
             'log.activity' => \App\Http\Middleware\LogActivity::class,
             'role' => \App\Http\Middleware\CheckRole::class,
+            'throttle' => \App\Http\Middleware\HandleThrottleRequests::class,
+            'auth.admin' => \App\Http\Middleware\EnsureAdminAuthenticated::class,
+            'auth.employee' => \App\Http\Middleware\EnsureEmployeeAuthenticated::class,
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {
-        //
+        $exceptions->dontReport([
+            \Illuminate\Http\Exceptions\ThrottleRequestsException::class,
+        ]);
     })->create();

@@ -160,11 +160,20 @@
 <script setup>
 import { ref, onMounted } from 'vue'
 import { router } from '@inertiajs/vue3'
+import { useInertiaAuth } from '@/Composables/useInertiaAuth'
+
+const { login, loading, errors } = useInertiaAuth()
 
 // Check for logout messages
 const showInactivityMessage = ref(false)
 const showSessionExpiredMessage = ref(false)
 const showLogoutMessage = ref(false)
+
+const form = ref({
+    email: '',
+    password: '',
+    role: 'admin' // default to admin
+})
 
 onMounted(() => {
     // Check URL parameters for logout messages
@@ -193,5 +202,13 @@ const goToAdminLogin = () => {
 
 const goToEmployeeLogin = () => {
     router.visit('/employee/login')
+}
+
+const submit = () => {
+    login(form.value, {
+        onFinish: () => {
+            // Handle completion if needed
+        }
+    })
 }
 </script>

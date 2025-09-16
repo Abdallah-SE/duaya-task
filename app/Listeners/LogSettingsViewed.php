@@ -38,10 +38,6 @@ class LogSettingsViewed implements ShouldQueue
                 'browser' => $event->browser,
             ]);
 
-            Log::info('Settings viewed activity logged', [
-                'user_id' => $event->user->id,
-                'settings_type' => $event->settingsType,
-            ]);
         } catch (\Exception $e) {
             Log::error('Failed to log settings viewed activity', [
                 'user_id' => $event->user->id,

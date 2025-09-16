@@ -33,11 +33,11 @@ class RoleSettingsSeeder extends Seeder
     private function getDefaultMonitoringStatus(string $roleName): bool
     {
         return match ($roleName) {
-            'admin' => true, // Enable monitoring for admins to test the system
+            'admin' => false, // Disable monitoring for admins
             'employee' => true, // Employees need idle monitoring
             'manager' => true, // Managers need idle monitoring
             'supervisor' => true, // Supervisors need idle monitoring
-            default => true, // Default to enabled for other roles
+            default => false, // Default to disabled for other roles
         };
     }
 }

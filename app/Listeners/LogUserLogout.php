@@ -48,13 +48,6 @@ class LogUserLogout
                 browser: $event->browser
             );
 
-            Log::info('User logout activity logged', [
-                'user_id' => $event->user->id,
-                'action' => $action,
-                'ip_address' => $event->ipAddress,
-                'device' => $event->device,
-                'browser' => $event->browser,
-            ]);
         } catch (\Exception $e) {
             Log::error('Failed to log user logout activity', [
                 'user_id' => $event->user->id,

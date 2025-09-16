@@ -15,10 +15,7 @@
                     </div>
                     <div class="flex items-center space-x-4">
                         <span class="text-sm text-gray-700">{{ user?.name || 'User' }}</span>
-                        <button @click="logout" 
-                                class="text-sm text-gray-500 hover:text-gray-700">
-                            Logout
-                        </button>
+                        <LogoutButton />
                     </div>
                 </div>
             </div>
@@ -59,15 +56,20 @@
 <script setup>
 import { ref, computed } from 'vue'
 import { router } from '@inertiajs/vue3'
+import { useInertiaAuth } from '@/Composables/useInertiaAuth'
 import IdleMonitor from '@/Components/IdleMonitor.vue'
 import Sidebar from '@/Components/Organisms/Sidebar.vue'
+import LogoutButton from '@/Components/Atoms/LogoutButton.vue'
 
 const props = defineProps({
     user: Object,
     userSettings: Object,
     initialSettings: Object,
     canControlIdleMonitoring: Boolean,
-    isIdleMonitoringEnabled: Boolean
+    isIdleMonitoringEnabled: {
+        type: Boolean,
+        default: true // Default to true if not provided
+    }
 })
 
 // Sidebar state - open by default on desktop, closed on mobile
@@ -75,9 +77,16 @@ const sidebarOpen = ref(true)
 
 // Computed property to determine if idle monitoring should be shown
 const shouldShowIdleMonitor = computed(() => {
-    // Show idle monitoring for all authenticated users
-    // The actual monitoring will be controlled by role settings
-    return props.user?.id && props.isIdleMonitoringEnabled
+    // Only show idle monitoring for employee users, not admin users
+    const isEmployee = props.user?.role_names?.includes('employee')
+    const shouldShow = !!(props.user?.id && props.isIdleMonitoringEnabled && isEmployee)
+    console.log('🔍 AppLayout shouldShowIdleMonitor:', {
+        userId: props.user?.id,
+        isIdleMonitoringEnabled: props.isIdleMonitoringEnabled,
+        isEmployee: isEmployee,
+        shouldShow
+    })
+    return shouldShow
 })
 
 const toggleSidebar = () => {
@@ -88,8 +97,37 @@ const closeSidebar = () => {
     sidebarOpen.value = false
 }
 
-const logout = () => {
-    router.post('/logout')
+const { smartLogout } = useInertiaAuth()
+
+const logout = async () => {
+    try {
+        // Use the smart logout function that automatically determines the correct logout method
+        await smartLogout({
+            onSuccess: () => {
+                // User will be redirected automatically based on their role
+                console.log('Logout successful')
+            },
+            onError: (errors) => {
+                console.error('Logout error:', errors)
+                // Fallback to role-based logout if Inertia fails
+                const user = useInertiaAuth().user.value
+                if (user?.role_names?.includes('employee')) {
+                    window.location.href = '/employee/logout'
+                } else {
+                    window.location.href = '/admin/logout'
+                }
+            }
+        })
+    } catch (error) {
+        console.error('Logout failed:', error)
+        // Fallback to role-based logout if Inertia fails
+        const user = useInertiaAuth().user.value
+        if (user?.role_names?.includes('employee')) {
+            window.location.href = '/employee/logout'
+        } else {
+            window.location.href = '/admin/logout'
+        }
+    }
 }
 </script>
 

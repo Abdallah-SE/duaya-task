@@ -1,14 +1,14 @@
 <template>
     <!-- Idle Warning Modal -->
-    <div v-if="showWarningModal" class="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-80">
+    <div v-if="isWarningModalVisible" class="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-80">
         <div class="bg-white rounded-lg shadow-xl max-w-md w-full mx-4 p-6">
             <!-- Warning Header -->
             <div class="flex items-center mb-4">
                 <div class="flex-shrink-0">
-                    <svg v-if="warningCount === 1" class="h-8 w-8 text-yellow-500" fill="currentColor" viewBox="0 0 20 20">
+                    <svg v-if="currentWarningCount === 1" class="h-8 w-8 text-yellow-500" fill="currentColor" viewBox="0 0 20 20">
                         <path fill-rule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clip-rule="evenodd"></path>
                     </svg>
-                    <svg v-else-if="warningCount === 2" class="h-8 w-8 text-orange-500" fill="currentColor" viewBox="0 0 20 20">
+                    <svg v-else-if="currentWarningCount === 2" class="h-8 w-8 text-orange-500" fill="currentColor" viewBox="0 0 20 20">
                         <path fill-rule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clip-rule="evenodd"></path>
                     </svg>
                     <svg v-else class="h-8 w-8 text-red-500" fill="currentColor" viewBox="0 0 20 20">
@@ -28,16 +28,16 @@
             </div>
 
             <!-- Progress Bar for Multiple Warnings -->
-            <div v-if="warningCount > 1" class="mb-4">
+            <div v-if="currentWarningCount > 1" class="mb-4">
                 <div class="flex justify-between text-sm text-gray-600 mb-1">
                     <span>Warning Progress</span>
-                    <span>{{ warningCount }}/{{ maxWarnings }}</span>
+                    <span>{{ currentWarningCount }}/{{ maxWarnings }}</span>
                 </div>
                 <div class="w-full bg-gray-200 rounded-full h-2">
                     <div 
                         class="h-2 rounded-full transition-all duration-300"
-                        :class="warningCount === 2 ? 'bg-orange-500' : 'bg-red-500'"
-                        :style="{ width: `${(warningCount / maxWarnings) * 100}%` }"
+                        :class="currentWarningCount === 2 ? 'bg-orange-500' : 'bg-red-500'"
+                        :style="{ width: `${(currentWarningCount / maxWarnings) * 100}%` }"
                     ></div>
                 </div>
             </div>
@@ -46,12 +46,12 @@
             <div class="mb-6">
                 <div class="text-center">
                     <p class="text-sm text-gray-500 mb-2">
-                        This warning will automatically proceed in {{ countdown }} seconds...
+                        This warning will automatically proceed in {{ currentCountdown }} seconds...
                     </p>
                     <div class="w-full bg-gray-200 rounded-full h-1">
                         <div 
                             class="h-1 rounded-full bg-blue-500 transition-all duration-1000"
-                            :style="{ width: `${(countdown / 10) * 100}%` }"
+                            :style="{ width: `${(currentCountdown / 10) * 100}%` }"
                         ></div>
                     </div>
                 </div>
@@ -60,14 +60,14 @@
             <!-- Action Buttons -->
             <div class="flex justify-end space-x-3">
                 <button
-                    v-if="warningCount < maxWarnings"
+                    v-if="currentWarningCount < maxWarnings"
                     @click="acknowledgeWarning"
                     class="px-4 py-2 text-sm font-medium text-white bg-blue-600 border border-transparent rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
                 >
                     I'm Still Here
                 </button>
                 <button
-                    v-if="warningCount >= maxWarnings"
+                    v-if="currentWarningCount >= maxWarnings"
                     @click="forceLogout"
                     class="px-4 py-2 text-sm font-medium text-white bg-red-600 border border-transparent rounded-md hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500"
                 >
@@ -79,8 +79,8 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted, onUnmounted } from 'vue'
-import axios from 'axios'
+import { computed, onMounted, onUnmounted, watch } from 'vue'
+import { useGlobalIdleMonitoring } from '@/Composables/useIdleMonitoring'
 
 // Props
 const props = defineProps({
@@ -102,23 +102,28 @@ const props = defineProps({
     }
 })
 
-// Reactive data
-const showWarningModal = ref(false)
-const warningCount = ref(0)
-const countdown = ref(10)
+// Use the global idle monitoring composable
+const {
+    isIdleMonitoringActive,
+    isWarningModalVisible,
+    currentWarningCount,
+    currentCountdown,
+    currentUser,
+    currentSettings,
+    maxWarnings,
+    startIdleMonitoring,
+    stopIdleMonitoring,
+    acknowledgeWarning,
+    forceLogout,
+    updateSettings,
+    isMonitoringUser,
+    getGlobalState,
+    on: onIdleEvent
+} = useGlobalIdleMonitoring()
 
-// Timer variables
-let idleTimer = null
-let countdownTimer = null
-
-// Computed properties
-const maxWarnings = computed(() => {
-    return 3 // Fixed to 3 as per task requirements
-})
-
-// Computed properties
+// Computed properties for UI
 const warningTitle = computed(() => {
-    switch (warningCount.value) {
+    switch (currentWarningCount.value) {
         case 1:
             return '⚠️ Alert - Inactivity Detected'
         case 2:
@@ -131,7 +136,7 @@ const warningTitle = computed(() => {
 })
 
 const warningMessage = computed(() => {
-    switch (warningCount.value) {
+    switch (currentWarningCount.value) {
         case 1:
             return 'You have been inactive for a while. This is your first alert.'
         case 2:
@@ -143,262 +148,64 @@ const warningMessage = computed(() => {
     }
 })
 
-// Methods
-const startIdleMonitoring = () => {
-    if (!props.isIdleMonitoringEnabled) {
-        console.log('Idle monitoring disabled')
-        return
-    }
-
-    console.log('🚀 Starting idle monitoring...')
-    console.log('Idle timeout:', props.initialSettings?.idle_timeout, 'seconds')
-    
-    // Add event listeners for user activity
-    const events = ['mousemove', 'keydown', 'scroll', 'click', 'touchstart', 'keyup', 'mousedown']
-    events.forEach(event => {
-        document.addEventListener(event, resetIdleTimer)
-    })
-    
-    // Start the initial timer
-    resetIdleTimer()
-    console.log('✅ Idle monitoring started')
-}
-
-const stopIdleMonitoring = () => {
-    console.log('🛑 Stopping idle monitoring...')
-    
-    // Remove event listeners
-    const events = ['mousemove', 'keydown', 'scroll', 'click', 'touchstart', 'keyup', 'mousedown']
-    events.forEach(event => {
-        document.removeEventListener(event, resetIdleTimer)
-    })
-    
-    // Clear timers
-    if (idleTimer) {
-        clearTimeout(idleTimer)
-        idleTimer = null
-    }
-    if (countdownTimer) {
-        clearInterval(countdownTimer)
-        countdownTimer = null
-    }
-    
-    console.log('✅ Idle monitoring stopped')
-}
-
-const resetIdleTimer = () => {
-    // Clear existing timers
-    if (idleTimer) {
-        clearTimeout(idleTimer)
-        idleTimer = null
-    }
-    if (countdownTimer) {
-        clearInterval(countdownTimer)
-        countdownTimer = null
-    }
-    
-    // If modal is showing, restart the countdown timer
-    // User needs to explicitly click "I'm Still Here" to dismiss the modal
-    if (showWarningModal.value) {
-        console.log('🔄 User moved mouse while modal is showing - restarting countdown')
-        startCountdown()
-        return
-    }
-    
-    // Only reset warning count if no modal is showing and user is truly active
-    // Don't reset during warning sequence
-    if (warningCount.value > 0 && !showWarningModal.value) {
-        warningCount.value = 0
-        console.log('🔄 User became active - reset warning count to 0')
-    }
-    
-    // Only start new idle timer if no warning modal is showing
-    if (!showWarningModal.value) {
-        // Start new idle timer - use timeout from idle_settings table
-        const timeout = (props.initialSettings?.idle_timeout || 5) * 1000
-        console.log('Setting idle timeout to:', timeout, 'ms (', props.initialSettings?.idle_timeout, 'seconds from idle_settings)')
-        idleTimer = setTimeout(() => {
-            handleIdleTimeout()
-        }, timeout)
-    }
-}
-
-const handleIdleTimeout = async () => {
-    // Prevent multiple simultaneous calls
-    if (showWarningModal.value) {
-        console.log('⚠️ Warning modal already showing, ignoring duplicate timeout')
-        return
-    }
-    
-    // Increment warning count
-    warningCount.value++
-    
-    console.log(`⚠️ Idle timeout detected - Warning ${warningCount.value}/${maxWarnings.value}`)
-    console.log('Current warning count:', warningCount.value, 'Max warnings:', maxWarnings.value)
-    console.log('Is this the third warning?', warningCount.value === 3)
-    
-    // Show warning first
-    showWarning()
-    
-    // Call API
-    await handleIdleWarningAPI()
-}
-
-const handleWarningTimeout = () => {
-    // Hide the current modal
-    showWarningModal.value = false
-    
-    console.log('Warning timeout - current count:', warningCount.value, 'max:', maxWarnings.value)
-    
-    // If we haven't reached the max warnings yet, show next warning immediately
-    if (warningCount.value < maxWarnings.value) {
-        console.log('Progressing to next warning:', warningCount.value + 1)
-        // Increment warning count and show next warning
-        warningCount.value++
-        console.log('New warning count:', warningCount.value, 'Is third?', warningCount.value === 3)
-        showWarning()
-        handleIdleWarningAPI()
-        return
-    }
-    
-    // If we've reached the max warnings, still call API for the third warning
-    // The backend will handle logout after creating the third idle session
-    console.log('Max warnings reached - calling API for third warning')
-    handleIdleWarningAPI()
-}
-
-const showWarning = () => {
-    showWarningModal.value = true
-    startCountdown()
-}
-
-const startCountdown = () => {
-    // Clear any existing countdown timer
-    if (countdownTimer) {
-        clearInterval(countdownTimer)
-        countdownTimer = null
-    }
-    
-    countdown.value = 10
-    countdownTimer = setInterval(() => {
-        countdown.value--
-        
-        if (countdown.value <= 0) {
-            clearInterval(countdownTimer)
-            countdownTimer = null
-            handleWarningTimeout()
-        }
-    }, 1000)
-}
-
-const handleIdleWarningAPI = async () => {
-    try {
-        console.log('🔍 Making API call with warning count:', warningCount.value)
-        console.log('🔍 Max warnings:', maxWarnings.value)
-        console.log('🔍 Is third warning?', warningCount.value >= 3)
-        
-        // Use axios with automatic CSRF handling (configured in bootstrap.js)
-        const response = await axios.post('/idle-monitoring/handle-warning', {
-            warning_count: warningCount.value
-        })
-        
-        console.log('✅ API call successful:', response.data)
-        
-        const data = response.data
-        
-        // Only logout if this is the max warning and logout is required
-        console.log('Checking logout conditions:', {
-            warningCount: warningCount.value,
-            maxWarnings: maxWarnings.value,
-            logoutRequired: data?.logout_required,
-            shouldLogout: warningCount.value >= maxWarnings.value && data?.logout_required
-        })
-        
-        if (warningCount.value >= maxWarnings.value && data?.logout_required) {
-            console.log('Max warning reached - logout required, redirecting...')
-            window.location.href = '/login?message=inactivity_logout'
-        }
-        
-    } catch (error) {
-        console.error('❌ API call failed:', error)
-        
-        // Handle 401 error (user logged out)
-        if (error.response?.status === 401) {
-            console.log('Session expired - redirecting to login')
-            window.location.replace('/login?message=session_expired')
-            return
-        }
-        
-        // Handle 419 error (CSRF token mismatch) - let the interceptor handle it
-        if (error.response?.status === 419) {
-            console.error('CSRF token mismatch - interceptor should handle this')
-            // The axios interceptor should handle CSRF refresh automatically
-            // If we get here, it means the interceptor failed, so reload
-            window.location.reload()
-            return
-        }
-        
-        // Handle network errors or other issues
-        if (error.code === 'NETWORK_ERROR' || !error.response) {
-            console.error('❌ Network error or no response')
-            // Don't redirect on network errors for first two warnings
-            if (warningCount.value < maxWarnings.value) {
-                console.log('Network error on warning', warningCount.value, '- continuing with warning sequence')
-                return
-            }
-        }
-        
-        // Only redirect on max warning, not on network errors
-        if (warningCount.value >= maxWarnings.value) {
-            console.log('Maximum warnings reached - redirecting to login')
-            window.location.href = '/login?message=inactivity_logout'
-        }
-    }
-}
-
-const acknowledgeWarning = () => {
-    showWarningModal.value = false
-    
-    // Reset warning count
-        warningCount.value = 0
-    
-    // Start new idle timer
-    resetIdleTimer()
-    
-    console.log('✅ User acknowledged warning - resetting idle monitoring')
-}
-
-const forceLogout = () => {
-    window.location.href = '/login?message=manual_logout'
-}
-
-// Lifecycle
+// Lifecycle hooks
 onMounted(() => {
     console.log('🔍 IdleMonitor mounted with props:', {
         userId: props.userId,
         isIdleMonitoringEnabled: props.isIdleMonitoringEnabled,
-        initialSettings: props.initialSettings,
-        idleTimeout: props.initialSettings?.idle_timeout,
-        maxWarnings: props.initialSettings?.max_idle_warnings
+        initialSettings: props.initialSettings
     })
     
-    if (props.isIdleMonitoringEnabled) {
-        console.log('✅ Starting idle monitoring...')
-        startIdleMonitoring()
+    // Check current monitoring status
+    const isCurrentlyMonitoring = isMonitoringUser(props.userId)
+    const isCurrentlyRunning = isIdleMonitoringActive.value
+    const globalState = getGlobalState()
+    
+    console.log('🔍 Current monitoring status:', {
+        isCurrentlyMonitoring,
+        isCurrentlyRunning,
+        currentUserId: globalState.currentUserId,
+        isRunning: globalState.isRunning
+    })
+    
+    // Only start monitoring if it's not already running for this user
+    if (!isCurrentlyMonitoring) {
+        console.log('🚀 Starting idle monitoring for user:', props.userId)
+        startIdleMonitoring(props.userId, props.initialSettings, props.isIdleMonitoringEnabled)
     } else {
-        console.log('❌ Idle monitoring disabled:', {
-            isIdleMonitoringEnabled: props.isIdleMonitoringEnabled
-        })
+        console.log('🔄 Idle monitoring already running for user:', props.userId)
+        // Update settings if they changed
+        if (props.initialSettings) {
+            updateSettings(props.initialSettings)
+        }
     }
+    
+    // Set up event listeners for debugging/logging
+    onIdleEvent('monitoring:started', (data) => {
+        console.log('✅ Idle monitoring started:', data)
+    })
+    
+    onIdleEvent('monitoring:stopped', (data) => {
+        console.log('🛑 Idle monitoring stopped:', data)
+    })
+    
+    onIdleEvent('idle:timeout', (data) => {
+        console.log('⚠️ Idle timeout:', data)
+    })
+    
+    onIdleEvent('warning:acknowledged', (data) => {
+        console.log('✅ Warning acknowledged:', data)
+    })
+    
+    onIdleEvent('logout:forced', (data) => {
+        console.log('🚪 Force logout:', data)
+    })
 })
 
 onUnmounted(() => {
-            stopIdleMonitoring()
-})
-
-// Expose methods for parent component
-defineExpose({
-    startIdleMonitoring,
-    stopIdleMonitoring
+    // Don't stop idle monitoring on unmount during navigation
+    // The global singleton will persist across page changes
+    // The monitoring will continue running in the background
+    console.log('🔄 IdleMonitor unmounted - keeping monitoring active for navigation')
 })
 </script>

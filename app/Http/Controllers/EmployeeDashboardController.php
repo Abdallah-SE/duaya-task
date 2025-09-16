@@ -4,7 +4,6 @@ namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Log;
 use Inertia\Inertia;
 use App\Models\User;
 use App\Models\Employee;
@@ -22,15 +21,23 @@ class EmployeeDashboardController extends Controller
     public function index(Request $request)
     {
         $user = $request->user();
+        
+        // Check if user is authenticated
+        if (!$user) {
+            return redirect()->route('login')->with('error', 'Please log in to access the employee dashboard.');
+        }
+        
+        // Verify user has employee role (additional safety check)
+        if (!$user->hasRole('employee')) {
+            return redirect()->route('login')->with('error', 'Access denied. Employee privileges required.');
+        }
+        
         $userSettings = $user->getIdleSettings();
         
         // Load employee relationship
         $user->load('employee');
         
-        // Debug: Log what we're sending to frontend
-        Log::info('🔍 EmployeeDashboardController called for user: ' . $user->id);
         $isIdleMonitoringEnabled = $user->isIdleMonitoringEnabled();
-        Log::info('🔍 EmployeeDashboardController - isIdleMonitoringEnabled: ' . ($isIdleMonitoringEnabled ? 'true' : 'false'));
         
         // Get simplified statistics for employee
         $stats = $this->getEmployeeStats($user);
@@ -47,7 +54,7 @@ class EmployeeDashboardController extends Controller
         $data = [
             'user' => $user,
             'userSettings' => $userSettings,
-            'initialSettings' => $userSettings, // Add this for IdleMonitor component
+            'initialSettings' => $userSettings, // Pass idle settings for IdleMonitor component
             'canControlIdleMonitoring' => $user->canControlIdleMonitoring(),
             'isIdleMonitoringEnabled' => $isIdleMonitoringEnabled,
             'stats' => $stats,
@@ -57,11 +64,6 @@ class EmployeeDashboardController extends Controller
             'greeting' => $this->getGreeting($user),
         ];
         
-        Log::info('🔍 Inertia data being sent:', [
-            'isIdleMonitoringEnabled' => $data['isIdleMonitoringEnabled'],
-            'canControlIdleMonitoring' => $data['canControlIdleMonitoring'],
-            'initialSettings' => $data['initialSettings']->toArray(),
-        ]);
         
         return Inertia::render('Employee/Dashboard', $data);
     }

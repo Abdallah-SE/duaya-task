@@ -35,12 +35,6 @@ class LogUserActivityCreated implements ShouldQueue
                 'browser' => $event->browser,
             ]);
 
-            Log::info('Model created activity logged', [
-                'user_id' => $event->user->id,
-                'model' => $event->getModelClass(),
-                'model_id' => $event->model->id,
-                'action' => $event->getAction(),
-            ]);
         } catch (\Exception $e) {
             Log::error('Failed to log model created activity', [
                 'user_id' => $event->user->id,

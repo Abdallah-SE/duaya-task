@@ -27,7 +27,7 @@ class EmployeeController extends Controller
     {
         $this->authorize('viewAny', Employee::class);
         
-        $currentUser = auth('admin')->user() ?? Auth::user();
+        $currentUser = Auth::user();
         
         // Build query for employees with their user data
         $query = Employee::with(['user.roles', 'user.penalties', 'user.activityLogs', 'user.idleSessions']);
@@ -111,7 +111,7 @@ class EmployeeController extends Controller
      */
     public function store(StoreEmployeeRequest $request)
     {
-        $currentUser = auth('admin')->user() ?? Auth::user();
+        $currentUser = Auth::user();
         
         // Create employee record
         $employee = Employee::create([
@@ -140,7 +140,7 @@ class EmployeeController extends Controller
      */
     public function update(UpdateEmployeeRequest $request, Employee $employee)
     {
-        $currentUser = auth('admin')->user() ?? Auth::user();
+        $currentUser = Auth::user();
         
         // Update employee data only (exclude any user-related fields)
         $employee->update([
@@ -180,7 +180,7 @@ class EmployeeController extends Controller
         // Delete only the employee record, keep the user
         $employee->delete();
         
-        $currentUser = auth('admin')->user() ?? Auth::user();
+        $currentUser = Auth::user();
         $redirectRoute = $currentUser->hasRole('admin') ? 'admin.employees.index' : 'employee.employees.index';
         return redirect()->route($redirectRoute)
             ->with('success', 'Employee deleted successfully.');

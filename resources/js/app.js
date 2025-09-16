@@ -7,6 +7,9 @@ import { resolvePageComponent } from 'laravel-vite-plugin/inertia-helpers';
 import Toast from 'vue-toastification';
 import 'vue-toastification/dist/index.css';
 
+// Inertia.js automatically handles CSRF tokens
+// No manual configuration needed
+
 createInertiaApp({
     title: (title) => `${title} - Duaya Task`,
     resolve: (name) => resolvePageComponent(`./Pages/${name}.vue`, import.meta.glob('./Pages/**/*.vue')),

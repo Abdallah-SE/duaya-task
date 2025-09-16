@@ -74,10 +74,10 @@
                                     <div class="text-sm text-gray-900">{{ user.email }}</div>
                                 </td>
                                 <td class="px-6 py-4 whitespace-nowrap">
-                                    <span v-for="role in user.roles" :key="role.id" 
+                                    <span v-for="(role, index) in user.role_names" :key="index" 
                                           class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium mr-1"
-                                          :class="getRoleBadgeClass(role.name)">
-                                        {{ role.name }}
+                                          :class="getRoleBadgeClass(role)">
+                                        {{ role }}
                                     </span>
                                 </td>
                                 <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">

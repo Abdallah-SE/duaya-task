@@ -37,13 +37,6 @@ class LogUserActivityUpdated implements ShouldQueue
                 'browser' => $event->browser,
             ]);
 
-            Log::info('Model updated activity logged', [
-                'user_id' => $event->user->id,
-                'model' => $event->getModelClass(),
-                'model_id' => $event->model->id,
-                'action' => $event->getAction(),
-                'changed_attributes' => array_keys($changedAttributes),
-            ]);
         } catch (\Exception $e) {
             Log::error('Failed to log model updated activity', [
                 'user_id' => $event->user->id,

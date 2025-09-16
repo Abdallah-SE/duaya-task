@@ -21,11 +21,22 @@ class AdminDashboardController extends Controller
     }
 
     public function index(Request $request)
-    {
+    { 
         $user = $request->user();
+        
+        // Check if user is authenticated
+        if (!$user) {
+            return redirect()->route('login')->with('error', 'Please log in to access the admin dashboard.');
+        }
+        
+        // Verify user has admin role (additional safety check)
+        if (!$user->hasRole('admin')) {
+            return redirect()->route('login')->with('error', 'Access denied. Administrator privileges required.');
+        }
+        
         $userSettings = $user->getIdleSettings();
         
-        // Get task-specific statistics for User Activity Logs & Inactivity Monitoring
+        // Get tasddk-specific statistics for User Activity Logs & Inactivity Monitoring
         $stats = $this->getTaskSpecificStats();
         
         // Get recent activities with more details for admin - filter out redundant activities
@@ -52,6 +63,7 @@ class AdminDashboardController extends Controller
         return Inertia::render('Admin/Dashboard', [
             'user' => $user,
             'userSettings' => $userSettings,
+            'isIdleMonitoringEnabled' => $user->isIdleMonitoringEnabled(),
             'stats' => $stats,
             'recentActivities' => $recentActivities,
             'crudBreakdown' => $crudBreakdown,

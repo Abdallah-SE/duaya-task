@@ -276,7 +276,7 @@ const populateForm = (user) => {
       name: user.name || '',
       email: user.email || '',
       password: '',
-      role: user.roles?.[0]?.name || '',
+      role: user.role_names?.[0] || '',
       department: user.employee?.department || '',
       job_title: user.employee?.job_title || '',
       is_active: user.is_active !== false,

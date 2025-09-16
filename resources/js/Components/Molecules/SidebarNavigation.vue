@@ -22,11 +22,9 @@
       />
 
       <!-- Logout -->
-      <SidebarButton
-        label="Logout"
-        icon-path="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"
-        @click="$emit('logout')"
-      />
+      <div class="px-3 py-2">
+        <LogoutButton />
+      </div>
     </div>
   </nav>
 </template>
@@ -35,6 +33,7 @@
 import { computed } from 'vue'
 import SidebarLink from '@/Components/Atoms/SidebarLink.vue'
 import SidebarButton from '@/Components/Atoms/SidebarButton.vue'
+import LogoutButton from '@/Components/Atoms/LogoutButton.vue'
 
 const props = defineProps({
   user: {

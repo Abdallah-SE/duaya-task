@@ -139,59 +139,9 @@ export function useToastNotifications() {
     cleanup()
   })
 
-  return {
-    showSuccess,
-    showError,
-    showWarning,
-    showInfo,
-    showConfirmation,
-    showDeleteConfirmation,
-    // Confirmation modal state
-    showConfirmationModal,
-    confirmationConfig,
-    handleConfirmationConfirm,
-    handleConfirmationCancel,
-    cleanup
-  }
-}
-
+  const hideConfirmationModal = () => {
     showConfirmationModal.value = false
   }
-
-  // Cleanup function
-  const cleanup = () => {
-    // Clear all active toasts
-    activeToasts.value.forEach(toastId => {
-      toast.dismiss(toastId)
-    })
-    activeToasts.value = []
-    
-    // Reset confirmation modal
-    showConfirmationModal.value = false
-    confirmationConfig.value = {
-      title: 'Confirm Action',
-      message: '',
-      confirmText: 'Yes, Continue',
-      cancelText: 'Cancel',
-      onConfirm: null,
-      onCancel: null,
-      loading: false
-    }
-    
-    isMounted.value = false
-  }
-  // Lifecycle
-  onMounted(() => {
-    isMounted.value = true
-  })
-
-  onBeforeUnmount(() => {
-    cleanup()
-  })
-
-  onUnmounted(() => {
-    cleanup()
-  })
 
   return {
     showSuccess,

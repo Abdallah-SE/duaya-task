@@ -1,317 +1,230 @@
-import { ref, computed, onMounted, onUnmounted, onBeforeUnmount } from 'vue'
-import { router } from '@inertiajs/vue3'
+import { ref, computed } from 'vue'
+import apiService from '../services/ApiService'
 
 export function useDashboard() {
-  // State
-  const dashboardStats = ref({
-    totalUsers: 0,
-    activeUsers: 0,
-    idleSessions: 0,
-    penalties: 0,
-    recentActivities: 0,
-    totalActivities: 0
-  })
-  
-  const analyticsData = ref({
-    activities: [],
-    departments: [],
-    roles: [],
-    timeSeries: []
-  })
-  
-  const statsLoading = ref(false)
-  const analyticsLoading = ref(false)
-  
-  // Abort controllers for API calls
-  const statsAbortController = ref(null)
-  const analyticsAbortController = ref(null)
-  
-  // Component state tracking
-  const isMounted = ref(false)
+    const dashboardData = ref(null)
+    const stats = ref(null)
+    const activities = ref([])
+    const loading = ref(false)
+    const error = ref(null)
 
-  // Computed
-  const statsPercentage = computed(() => ({
-    activeUsers: dashboardStats.value.totalUsers > 0 
-      ? Math.round((dashboardStats.value.activeUsers / dashboardStats.value.totalUsers) * 100)
-      : 0,
-    idleSessions: dashboardStats.value.totalUsers > 0
-      ? Math.round((dashboardStats.value.idleSessions / dashboardStats.value.totalUsers) * 100)
-      : 0
-  }))
+    const isAdmin = computed(() => apiService.userType === 'admin')
+    const isEmployee = computed(() => apiService.userType === 'employee')
 
-  // Helper function to cancel all pending requests
-  const cancelAllRequests = () => {
-    if (statsAbortController.value) {
-      statsAbortController.value.abort()
-      statsAbortController.value = null
-    }
-    if (analyticsAbortController.value) {
-      analyticsAbortController.value.abort()
-      analyticsAbortController.value = null
-    }
-  }
+    /**
+     * Load dashboard data
+     */
+    const loadDashboard = async () => {
+        loading.value = true
+        error.value = null
 
-  // Methods
-  const fetchStats = async () => {
-    // Only proceed if component is still mounted
-    if (!isMounted.value) {
-      return
+        try {
+            const response = await apiService.getDashboard()
+            
+            if (response.success) {
+                dashboardData.value = response.data
+                stats.value = response.data.stats
+                activities.value = response.data.recentActivities || []
+            } else {
+                error.value = response.message
+            }
+        } catch (err) {
+            error.value = err.message
+        } finally {
+            loading.value = false
+        }
     }
 
-    // Cancel any existing stats request
-    if (statsAbortController.value) {
-      statsAbortController.value.abort()
+    /**
+     * Load statistics only
+     */
+    const loadStats = async () => {
+        loading.value = true
+        error.value = null
+
+        try {
+            const response = await apiService.getStats()
+            
+            if (response.success) {
+                stats.value = response.data
+            } else {
+                error.value = response.message
+            }
+        } catch (err) {
+            error.value = err.message
+        } finally {
+            loading.value = false
+        }
     }
 
-    statsLoading.value = true
-    statsAbortController.value = new AbortController()
+    /**
+     * Load activities
+     */
+    const loadActivities = async () => {
+        loading.value = true
+        error.value = null
 
-    try {
-      const response = await fetch('/api/dashboard/stats', {
-        signal: statsAbortController.value.signal
-      })
-      
-      // Check if component is still mounted after fetch
-      if (!isMounted.value) {
-        return
-      }
-
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`)
-      }
-
-      const data = await response.json()
-      dashboardStats.value = data
-    } catch (error) {
-      // Don't process errors if component is unmounted or request was aborted
-      if (!isMounted.value || error.name === 'AbortError') {
-        return
-      }
-      console.error('Error fetching stats:', error)
-    } finally {
-      if (isMounted.value) {
-        statsLoading.value = false
-      }
-      statsAbortController.value = null
-    }
-  }
-
-  const fetchAnalytics = async () => {
-    // Only proceed if component is still mounted
-    if (!isMounted.value) {
-      return
+        try {
+            const response = await apiService.getActivities()
+            
+            if (response.success) {
+                activities.value = response.data
+            } else {
+                error.value = response.message
+            }
+        } catch (err) {
+            error.value = err.message
+        } finally {
+            loading.value = false
+        }
     }
 
-    // Cancel any existing analytics request
-    if (analyticsAbortController.value) {
-      analyticsAbortController.value.abort()
+    /**
+     * Load users (admin only)
+     */
+    const loadUsers = async () => {
+        if (!isAdmin.value) {
+            throw new Error('Access denied. Admin privileges required.')
+        }
+
+        loading.value = true
+        error.value = null
+
+        try {
+            const response = await apiService.getUsers()
+            
+            if (response.success) {
+                return response.data
+            } else {
+                error.value = response.message
+                return null
+            }
+        } catch (err) {
+            error.value = err.message
+            return null
+        } finally {
+            loading.value = false
+        }
     }
 
-    analyticsLoading.value = true
-    analyticsAbortController.value = new AbortController()
+    /**
+     * Load employees (admin only)
+     */
+    const loadEmployees = async () => {
+        if (!isAdmin.value) {
+            throw new Error('Access denied. Admin privileges required.')
+        }
 
-    try {
-      const response = await fetch('/api/dashboard/analytics', {
-        signal: analyticsAbortController.value.signal
-      })
-      
-      // Check if component is still mounted after fetch
-      if (!isMounted.value) {
-        return
-      }
+        loading.value = true
+        error.value = null
 
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`)
-      }
-
-      const data = await response.json()
-      analyticsData.value = data
-    } catch (error) {
-      // Don't process errors if component is unmounted or request was aborted
-      if (!isMounted.value || error.name === 'AbortError') {
-        return
-      }
-      console.error('Error fetching analytics:', error)
-    } finally {
-      if (isMounted.value) {
-        analyticsLoading.value = false
-      }
-      analyticsAbortController.value = null
-    }
-  }
-
-  const refreshStats = async () => {
-    // Only proceed if component is still mounted
-    if (!isMounted.value) {
-      return
+        try {
+            const response = await apiService.getEmployees()
+            
+            if (response.success) {
+                return response.data
+            } else {
+                error.value = response.message
+                return null
+            }
+        } catch (err) {
+            error.value = err.message
+            return null
+        } finally {
+            loading.value = false
+        }
     }
 
-    await Promise.all([
-      fetchStats(),
-      fetchAnalytics()
-    ])
-  }
+    /**
+     * Load penalties
+     */
+    const loadPenalties = async () => {
+        loading.value = true
+        error.value = null
 
-  const updateStats = (newStats) => {
-    if (isMounted.value) {
-      dashboardStats.value = { ...dashboardStats.value, ...newStats }
-    }
-  }
-
-  const resetStats = () => {
-    if (isMounted.value) {
-      dashboardStats.value = {
-        totalUsers: 0,
-        activeUsers: 0,
-        idleSessions: 0,
-        penalties: 0,
-        recentActivities: 0,
-        totalActivities: 0
-      }
-    }
-  }
-
-  // Cleanup function
-  const cleanup = () => {
-    cancelAllRequests()
-    isMounted.value = false
-  }
-
-  // Lifecycle
-  onMounted(() => {
-    isMounted.value = true
-    refreshStats()
-  })
-
-  onBeforeUnmount(() => {
-    cleanup()
-  })
-
-  onUnmounted(() => {
-    cleanup()
-  })
-
-  return {
-    // State
-    dashboardStats,
-    analyticsData,
-    statsLoading,
-    analyticsLoading,
-    
-    // Computed
-    statsPercentage,
-    
-    // Methods
-    fetchStats,
-    fetchAnalytics,
-    refreshStats,
-    updateStats,
-    resetStats,
-    cleanup
-  }
-}
-
+        try {
+            const response = await apiService.getPenalties()
+            
+            if (response.success) {
+                return response.data
+            } else {
+                error.value = response.message
+                return null
+            }
+        } catch (err) {
+            error.value = err.message
+            return null
+        } finally {
+            loading.value = false
+        }
     }
 
-    analyticsLoading.value = true
-    analyticsAbortController.value = new AbortController()
+    /**
+     * Load settings
+     */
+    const loadSettings = async () => {
+        loading.value = true
+        error.value = null
 
-    try {
-      const response = await fetch('/api/dashboard/analytics', {
-        signal: analyticsAbortController.value.signal
-      })
-      
-      // Check if component is still mounted after fetch
-      if (!isMounted.value) {
-        return
-      }
-
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`)
-      }
-
-      const data = await response.json()
-      analyticsData.value = data
-    } catch (error) {
-      // Don't process errors if component is unmounted or request was aborted
-      if (!isMounted.value || error.name === 'AbortError') {
-        return
-      }
-      console.error('Error fetching analytics:', error)
-    } finally {
-      if (isMounted.value) {
-        analyticsLoading.value = false
-      }
-      analyticsAbortController.value = null
-    }
-  }
-
-  const refreshStats = async () => {
-    // Only proceed if component is still mounted
-    if (!isMounted.value) {
-      return
+        try {
+            const response = await apiService.getSettings()
+            
+            if (response.success) {
+                return response.data
+            } else {
+                error.value = response.message
+                return null
+            }
+        } catch (err) {
+            error.value = err.message
+            return null
+        } finally {
+            loading.value = false
+        }
     }
 
-    await Promise.all([
-      fetchStats(),
-      fetchAnalytics()
-    ])
-  }
+    /**
+     * Update settings
+     */
+    const updateSettings = async (settings) => {
+        loading.value = true
+        error.value = null
 
-  const updateStats = (newStats) => {
-    if (isMounted.value) {
-      dashboardStats.value = { ...dashboardStats.value, ...newStats }
+        try {
+            const response = await apiService.updateSettings(settings)
+            
+            if (response.success) {
+                return response.data
+            } else {
+                error.value = response.message
+                return null
+            }
+        } catch (err) {
+            error.value = err.message
+            return null
+        } finally {
+            loading.value = false
+        }
     }
-  }
 
-  const resetStats = () => {
-    if (isMounted.value) {
-      dashboardStats.value = {
-        totalUsers: 0,
-        activeUsers: 0,
-        idleSessions: 0,
-        penalties: 0,
-        recentActivities: 0,
-        totalActivities: 0
-      }
+    return {
+        // State
+        dashboardData: computed(() => dashboardData.value),
+        stats: computed(() => stats.value),
+        activities: computed(() => activities.value),
+        loading: computed(() => loading.value),
+        error: computed(() => error.value),
+        isAdmin,
+        isEmployee,
+
+        // Methods
+        loadDashboard,
+        loadStats,
+        loadActivities,
+        loadUsers,
+        loadEmployees,
+        loadPenalties,
+        loadSettings,
+        updateSettings
     }
-  }
-
-  // Cleanup function
-  const cleanup = () => {
-    cancelAllRequests()
-    isMounted.value = false
-  }
-  // Lifecycle
-  onMounted(() => {
-    isMounted.value = true
-    refreshStats()
-  })
-
-  onBeforeUnmount(() => {
-    cleanup()
-  })
-
-  onUnmounted(() => {
-    cleanup()
-  })
-
-  return {
-    // State
-    dashboardStats,
-    analyticsData,
-    statsLoading,
-    analyticsLoading,
-    
-    // Computed
-    statsPercentage,
-    
-    // Methods
-    fetchStats,
-    fetchAnalytics,
-    refreshStats,
-    updateStats,
-    resetStats,
-    cleanup
-  }
 }

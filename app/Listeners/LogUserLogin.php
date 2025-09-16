@@ -38,13 +38,6 @@ class LogUserLogin
                 browser: $event->browser
             );
 
-            Log::info('User login activity logged', [
-                'user_id' => $event->user->id,
-                'login_type' => $event->loginType,
-                'ip_address' => $event->ipAddress,
-                'device' => $event->device,
-                'browser' => $event->browser,
-            ]);
         } catch (\Exception $e) {
             Log::error('Failed to log user login activity', [
                 'user_id' => $event->user->id,
