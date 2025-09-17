@@ -18,6 +18,7 @@ class DatabaseSeeder extends Seeder
             UserSeeder::class,
             IdleSettingsSeeder::class,
             RoleSettingsSeeder::class,
+            UserSettingsSeeder::class,
             ActivityLogSeeder::class,
         ]);
     }
