@@ -156,30 +156,281 @@
                 </div>
             </div>
 
+            <!-- Activity Logs Summary -->
+            <div v-if="recentActivities.pagination" class="bg-gradient-to-r from-indigo-500 to-purple-600 shadow rounded-lg text-white">
+                <div class="px-6 py-4">
+                    <div class="flex items-center justify-between">
+                        <div>
+                            <h3 class="text-lg font-semibold">Activity Logs Summary</h3>
+                            <p class="text-indigo-100 text-sm">Complete activity tracking overview</p>
+                        </div>
+                        <div class="text-right">
+                            <div class="text-3xl font-bold">{{ recentActivities.pagination.total }}</div>
+                            <div class="text-indigo-200 text-sm">Total Records</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
             <!-- Activity Logs -->
             <div class="bg-white shadow rounded-lg">
                 <div class="px-6 py-4 border-b border-gray-200">
-                    <h3 class="text-lg font-semibold text-gray-900">Activity Logs</h3>
-                    <p class="text-sm text-gray-500">Track all CRUD operations and important actions</p>
-                </div>
-                <div class="p-6">
-                    <div class="space-y-4">
-                        <div v-for="activity in recentActivities.slice(0, 10)" :key="activity.id" 
-                             class="flex items-center justify-between py-3 px-4 bg-gray-50 rounded-lg">
+                    <div class="flex items-center justify-between">
+                        <div>
                             <div class="flex items-center space-x-3">
-                                <div class="h-2 w-2 rounded-full" :class="getActivityDotColor(activity.action)"></div>
-                                <div>
-                                    <div class="text-sm font-medium text-gray-900">
-                                        {{ activity.details?.description || formatActivityAction(activity.action) }}
-                                    </div>
-                                    <div class="text-xs text-gray-500">
-                                        {{ activity.user?.name || 'Unknown User' }} • {{ activity.device }} • {{ activity.ip_address }}
-                                    </div>
+                                <h3 class="text-lg font-semibold text-gray-900">Activity Logs</h3>
+                                <div v-if="recentActivities.pagination" class="flex items-center space-x-2">
+                                    <span class="inline-flex items-center px-3 py-1 rounded-full text-sm font-semibold bg-indigo-100 text-indigo-800">
+                                        {{ recentActivities.pagination.total }} Total Records
+                                    </span>
+                                    <span class="text-sm text-gray-500">
+                                        ({{ recentActivities.pagination.from }}-{{ recentActivities.pagination.to }} shown)
+                                    </span>
                                 </div>
                             </div>
-                            <div class="text-xs text-gray-500">
-                                {{ formatTimeAgo(activity.created_at) }}
+                            <p class="text-sm text-gray-500 mt-1">
+                                Track all CRUD operations and important actions
+                            </p>
+                        </div>
+                        <div class="flex items-center space-x-2">
+                            <select v-model="perPage" @change="loadActivities" 
+                                    class="text-sm border-gray-300 rounded-md focus:ring-indigo-500 focus:border-indigo-500">
+                                <option value="5">5 per page</option>
+                                <option value="10">10 per page</option>
+                                <option value="20">20 per page</option>
+                                <option value="50">50 per page</option>
+                            </select>
+                        </div>
+                    </div>
+                    
+                    <!-- Search Only -->
+                    <div class="mt-4">
+                        <div class="relative max-w-md">
+                            <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                                <svg v-if="!loading" class="h-5 w-5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                                </svg>
+                                <svg v-else class="animate-spin h-5 w-5 text-indigo-500" fill="none" viewBox="0 0 24 24">
+                                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                </svg>
                             </div>
+                            <input v-model="searchQuery" 
+                                   @input="debouncedSearch"
+                                   type="text" 
+                                   placeholder="Search activities..."
+                                   :disabled="loading"
+                                   class="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-md leading-5 bg-white placeholder-gray-500 focus:outline-none focus:placeholder-gray-400 focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200">
+                        </div>
+                    </div>
+                </div>
+                <div class="p-6">
+                    <!-- Enhanced Loading State -->
+                    <div v-if="loading" class="py-12">
+                        <div class="flex flex-col items-center justify-center space-y-4">
+                            <!-- Spinner -->
+                            <div class="relative">
+                                <div class="animate-spin rounded-full h-12 w-12 border-4 border-indigo-200"></div>
+                                <div class="animate-spin rounded-full h-12 w-12 border-4 border-indigo-600 border-t-transparent absolute top-0 left-0"></div>
+                            </div>
+                            
+                            <!-- Loading Text -->
+                            <div class="text-center">
+                                <p class="text-lg font-medium text-gray-900">Loading Activities</p>
+                                <p class="text-sm text-gray-500">Please wait while we fetch the data...</p>
+                            </div>
+                            
+                            <!-- Progress Bar -->
+                            <div class="w-64 bg-gray-200 rounded-full h-2">
+                                <div class="bg-indigo-600 h-2 rounded-full animate-pulse" style="width: 60%"></div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Activities List -->
+                    <div v-else class="transition-all duration-300 ease-in-out">
+                        <!-- Results Count -->
+                        <div v-if="recentActivities.pagination" class="mb-4 bg-gray-50 px-4 py-3 rounded-lg">
+                            <div class="flex items-center justify-between">
+                                <div class="flex items-center space-x-4">
+                                    <div class="text-sm text-gray-600">
+                                        <span v-if="searchQuery">
+                                            <span class="font-semibold text-indigo-600">{{ recentActivities.pagination.total }}</span> result(s) found for "<span class="font-medium">{{ searchQuery }}</span>"
+                                        </span>
+                                        <span v-else>
+                                            Showing <span class="font-semibold text-gray-900">{{ recentActivities.pagination.from }}-{{ recentActivities.pagination.to }}</span> of <span class="font-semibold text-indigo-600">{{ recentActivities.pagination.total }}</span> total activities
+                                        </span>
+                                    </div>
+                                </div>
+                                <div class="text-xs text-gray-500">
+                                    Page {{ recentActivities.pagination.current_page }} of {{ recentActivities.pagination.last_page }}
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="space-y-4">
+                            <div v-for="activity in recentActivities.data" :key="activity.id" 
+                                 class="flex items-center justify-between py-3 px-4 bg-gray-50 rounded-lg">
+                                <div class="flex items-center space-x-3">
+                                    <div class="h-2 w-2 rounded-full" :class="getActivityDotColor(activity.action)"></div>
+                                    <div>
+                                        <div class="text-sm font-medium text-gray-900">
+                                            {{ activity.details?.description || formatActivityAction(activity.action) }}
+                                        </div>
+                                        <div class="text-xs text-gray-500">
+                                            {{ activity.user?.name || 'Unknown User' }} • {{ activity.device }} • {{ activity.ip_address }}
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="text-xs text-gray-500">
+                                    {{ formatTimeAgo(activity.created_at) }}
+                                </div>
+                            </div>
+                            
+                            <!-- Empty State -->
+                            <div v-if="recentActivities.data.length === 0" class="text-center py-8">
+                                <div class="text-gray-500 text-sm">
+                                    <span v-if="searchQuery">No activities found matching "{{ searchQuery }}"</span>
+                                    <span v-else>No activities found</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Enhanced Pagination -->
+                    <div v-if="recentActivities.pagination && recentActivities.pagination.last_page > 1" 
+                         class="mt-6 bg-gray-50 px-4 py-3 rounded-lg">
+                        <!-- Mobile Pagination -->
+                        <div class="flex items-center justify-between sm:hidden">
+                            <div class="flex items-center space-x-2">
+                                <button @click="goToPage(1)" 
+                                        :disabled="recentActivities.pagination.current_page <= 1 || loading"
+                                        class="px-3 py-2 text-sm font-medium text-gray-500 bg-white border border-gray-300 rounded-md hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200">
+                                    <span v-if="loading && currentPage === 1" class="flex items-center">
+                                        <svg class="animate-spin -ml-1 mr-1 h-3 w-3" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                                            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                        </svg>
+                                    </span>
+                                    <span v-else>First</span>
+                                </button>
+                                <button @click="goToPage(recentActivities.pagination.current_page - 1)" 
+                                        :disabled="recentActivities.pagination.current_page <= 1 || loading"
+                                        class="px-3 py-2 text-sm font-medium text-gray-500 bg-white border border-gray-300 rounded-md hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200">
+                                    <span v-if="loading && currentPage === recentActivities.pagination.current_page - 1" class="flex items-center">
+                                        <svg class="animate-spin -ml-1 mr-1 h-3 w-3" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                                            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                        </svg>
+                                    </span>
+                                    <span v-else>Previous</span>
+                                </button>
+                            </div>
+                            
+                            <div class="flex items-center space-x-1">
+                                <span class="text-sm text-gray-700">
+                                    <span v-if="loading" class="flex items-center">
+                                        <svg class="animate-spin -ml-1 mr-1 h-3 w-3" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                                            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                        </svg>
+                                        Loading...
+                                    </span>
+                                    <span v-else>Page {{ recentActivities.pagination.current_page }} of {{ recentActivities.pagination.last_page }}</span>
+                                </span>
+                            </div>
+                            
+                            <div class="flex items-center space-x-2">
+                                <button @click="goToPage(recentActivities.pagination.current_page + 1)" 
+                                        :disabled="recentActivities.pagination.current_page >= recentActivities.pagination.last_page || loading"
+                                        class="px-3 py-2 text-sm font-medium text-gray-500 bg-white border border-gray-300 rounded-md hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200">
+                                    <span v-if="loading && currentPage === recentActivities.pagination.current_page + 1" class="flex items-center">
+                                        <svg class="animate-spin -ml-1 mr-1 h-3 w-3" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                                            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                        </svg>
+                                    </span>
+                                    <span v-else>Next</span>
+                                </button>
+                                <button @click="goToPage(recentActivities.pagination.last_page)" 
+                                        :disabled="recentActivities.pagination.current_page >= recentActivities.pagination.last_page || loading"
+                                        class="px-3 py-2 text-sm font-medium text-gray-500 bg-white border border-gray-300 rounded-md hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200">
+                                    <span v-if="loading && currentPage === recentActivities.pagination.last_page" class="flex items-center">
+                                        <svg class="animate-spin -ml-1 mr-1 h-3 w-3" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                                            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                        </svg>
+                                    </span>
+                                    <span v-else>Last</span>
+                                </button>
+                            </div>
+                        </div>
+                        
+                        <!-- Desktop Pagination -->
+                        <div class="hidden sm:flex sm:items-center sm:justify-between">
+                            <div class="text-sm text-gray-700">
+                                Showing
+                                <span class="font-medium">{{ recentActivities.pagination.from }}</span>
+                                to
+                                <span class="font-medium">{{ recentActivities.pagination.to }}</span>
+                                of
+                                <span class="font-medium">{{ recentActivities.pagination.total }}</span>
+                                results
+                            </div>
+                            
+                            <nav class="flex items-center space-x-1" aria-label="Pagination">
+                                <!-- Previous Page -->
+                                <button @click="goToPage(recentActivities.pagination.current_page - 1)" 
+                                        :disabled="recentActivities.pagination.current_page <= 1 || loading"
+                                        class="px-3 py-2 text-sm font-medium text-gray-500 bg-white border border-gray-300 rounded-l-md hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200">
+                                    <span v-if="loading && currentPage === recentActivities.pagination.current_page - 1" class="flex items-center">
+                                        <svg class="animate-spin -ml-1 mr-2 h-4 w-4 text-gray-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                                            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                        </svg>
+                                        Loading...
+                                    </span>
+                                    <span v-else>Previous</span>
+                                </button>
+                                
+                                <!-- Page Numbers -->
+                                <template v-for="page in getVisiblePages()" :key="page">
+                                    <button v-if="page !== '...'" 
+                                            @click="goToPage(page)"
+                                            :disabled="loading"
+                                            :class="[
+                                                'px-4 py-2 text-sm font-medium border transition-all duration-200',
+                                                page === recentActivities.pagination.current_page
+                                                    ? 'z-10 bg-indigo-50 border-indigo-500 text-indigo-600'
+                                                    : 'bg-white border-gray-300 text-gray-500 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed'
+                                            ]">
+                                        <span v-if="loading && currentPage === page" class="flex items-center">
+                                            <svg class="animate-spin -ml-1 mr-1 h-3 w-3" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                                                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                            </svg>
+                                        </span>
+                                        <span v-else>{{ page }}</span>
+                                    </button>
+                                    <span v-else class="px-4 py-2 text-sm font-medium text-gray-500 bg-white border border-gray-300">
+                                        ...
+                                    </span>
+                                </template>
+                                
+                                <!-- Next Page -->
+                                <button @click="goToPage(recentActivities.pagination.current_page + 1)" 
+                                        :disabled="recentActivities.pagination.current_page >= recentActivities.pagination.last_page || loading"
+                                        class="px-3 py-2 text-sm font-medium text-gray-500 bg-white border border-gray-300 rounded-r-md hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200">
+                                    <span v-if="loading && currentPage === recentActivities.pagination.current_page + 1" class="flex items-center">
+                                        <svg class="animate-spin -ml-1 mr-2 h-4 w-4 text-gray-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                                            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                        </svg>
+                                        Loading...
+                                    </span>
+                                    <span v-else>Next</span>
+                                </button>
+                            </nav>
                         </div>
                     </div>
                 </div>
@@ -220,7 +471,7 @@
 </template>
 
 <script setup>
-import { ref } from 'vue'
+import { ref, reactive, onMounted } from 'vue'
 import { router, Link } from '@inertiajs/vue3'
 import AppLayout from '@/Layouts/AppLayout.vue'
 
@@ -229,13 +480,106 @@ const props = defineProps({
     userSettings: Object,
     isIdleMonitoringEnabled: Boolean,
     stats: Object,
-    recentActivities: Array,
+    recentActivities: Object, // Changed from Array to Object to support pagination
     allPenalties: Array,
     inactivitySettings: Object
 })
 
+// Reactive data for pagination and search
+const loading = ref(false)
+const perPage = ref(10)
+const currentPage = ref(1)
+const searchQuery = ref('')
+const searchTimeout = ref(null)
+
+// Initialize pagination data
+onMounted(() => {
+    if (props.recentActivities && props.recentActivities.pagination) {
+        currentPage.value = props.recentActivities.pagination.current_page
+        perPage.value = props.recentActivities.pagination.per_page
+    }
+})
+
 const refreshData = () => {
     router.reload()
+}
+
+const loadActivities = () => {
+    loading.value = true
+    const params = {
+        page: currentPage.value,
+        per_page: perPage.value
+    }
+    
+    // Add search if it has value
+    if (searchQuery.value) params.search = searchQuery.value
+    
+    router.get('/admin/dashboard', params, {
+        preserveState: true,
+        preserveScroll: true,
+        onFinish: () => {
+            loading.value = false
+        }
+    })
+}
+
+const goToPage = (page) => {
+    if (page < 1 || page > props.recentActivities.pagination.last_page) return
+    
+    currentPage.value = page
+    loadActivities()
+}
+
+const debouncedSearch = () => {
+    if (searchTimeout.value) {
+        clearTimeout(searchTimeout.value)
+    }
+    
+    searchTimeout.value = setTimeout(() => {
+        currentPage.value = 1 // Reset to first page when searching
+        loadActivities()
+    }, 500) // 500ms delay
+}
+
+const getVisiblePages = () => {
+    const current = props.recentActivities.pagination.current_page
+    const last = props.recentActivities.pagination.last_page
+    const pages = []
+    
+    if (last <= 7) {
+        // Show all pages if 7 or fewer
+        for (let i = 1; i <= last; i++) {
+            pages.push(i)
+        }
+    } else {
+        // Show first page
+        pages.push(1)
+        
+        if (current > 4) {
+            pages.push('...')
+        }
+        
+        // Show pages around current page
+        const start = Math.max(2, current - 1)
+        const end = Math.min(last - 1, current + 1)
+        
+        for (let i = start; i <= end; i++) {
+            if (i !== 1 && i !== last) {
+                pages.push(i)
+            }
+        }
+        
+        if (current < last - 3) {
+            pages.push('...')
+        }
+        
+        // Show last page
+        if (last > 1) {
+            pages.push(last)
+        }
+    }
+    
+    return pages
 }
 
 const formatDate = (dateString) => {
