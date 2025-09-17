@@ -8,8 +8,6 @@ use Illuminate\Support\Facades\Log;
 use App\Models\IdleSession;
 use App\Models\Penalty;
 use App\Models\IdleSetting;
-use App\Models\ActivityLog;
-use App\Events\UserActivityEvent;
 use App\Events\IdleWarningEvent;
 use App\Events\PenaltyAppliedEvent;
 use App\Events\UserLogoutEvent;
@@ -37,17 +35,6 @@ class IdleMonitoringController extends Controller
         // Start new idle session
         $idleSession = IdleSession::startSession($user->id);
         
-        // Fire event for activity logging
-        event(new UserActivityEvent(
-            user: $user,
-            action: 'create_idle_session',
-            subjectType: 'App\Models\IdleSession',
-            subjectId: $idleSession->id,
-            ipAddress: $request->ip(),
-            device: $this->getDeviceInfo($request),
-            browser: $this->getBrowserInfo($request)
-        ));
-        
         return response()->json([
             'message' => 'Idle session started',
             'session_id' => $idleSession->id,
@@ -74,17 +61,6 @@ class IdleMonitoringController extends Controller
         }
         
         $idleSession->endSession();
-        
-        // Fire event for activity logging
-        event(new UserActivityEvent(
-            user: $user,
-            action: 'idle_session_ended',
-            subjectType: 'App\Models\IdleSession',
-            subjectId: $idleSession->id,
-            ipAddress: $request->ip(),
-            device: $this->getDeviceInfo($request),
-            browser: $this->getBrowserInfo($request)
-        ));
         
         return response()->json([
             'message' => 'Idle session ended',
@@ -127,23 +103,6 @@ class IdleMonitoringController extends Controller
             timeoutSeconds: $idleSettings->idle_timeout
         ));
         
-        // Log the warning as activity
-        $actionName = match($warningCount) {
-            1 => 'idle_alert_shown',
-            2 => 'idle_warning_shown', 
-            3 => 'idle_logout_triggered',
-            default => 'idle_warning_' . $warningCount
-        };
-        
-        event(new UserActivityEvent(
-            user: $user,
-            action: $actionName,
-            subjectType: 'App\Models\IdleSession',
-            subjectId: $idleSession->id,
-            ipAddress: $request->ip(),
-            device: $this->getDeviceInfo($request),
-            browser: $this->getBrowserInfo($request)
-        ));
         
         // Check if this is the third warning (should trigger penalty and logout)
         // According to task: 1st=Alert, 2nd=Warning, 3rd=Auto Logout + Penalty
@@ -229,16 +188,6 @@ class IdleMonitoringController extends Controller
                 reason: 'Third idle warning - automatic logout triggered'
             ));
             
-            // Fire event for activity logging
-            event(new UserActivityEvent(
-                user: $user,
-                action: 'idle_penalty_applied',
-                subjectType: 'App\Models\Penalty',
-                subjectId: $penalty->id,
-                ipAddress: $request->ip(),
-                device: $this->getDeviceInfo($request),
-                browser: $this->getBrowserInfo($request)
-            ));
             
             
             // Fire logout event for activity logging
@@ -337,16 +286,6 @@ class IdleMonitoringController extends Controller
             $validated['max_idle_warnings']
         );
         
-        // Fire event for settings update
-        event(new UserActivityEvent(
-            user: $user,
-            action: 'update_idle_settings',
-            subjectType: 'App\Models\IdleSetting',
-            subjectId: $settings->id,
-            ipAddress: $request->ip(),
-            device: $this->getDeviceInfo($request),
-            browser: $this->getBrowserInfo($request)
-        ));
         
         return response()->json([
             'message' => 'Settings updated successfully',
@@ -384,16 +323,6 @@ class IdleMonitoringController extends Controller
         $role = \Spatie\Permission\Models\Role::where('name', $validated['role_name'])->first();
         $roleSetting = \App\Models\RoleSetting::where('role_id', $role->id)->first();
         
-        // Fire event for settings update
-        event(new UserActivityEvent(
-            user: $user,
-            action: 'update_role_idle_settings',
-            subjectType: 'App\Models\RoleSetting',
-            subjectId: $roleSetting ? $roleSetting->id : null,
-            ipAddress: $request->ip(),
-            device: $this->getDeviceInfo($request),
-            browser: $this->getBrowserInfo($request)
-        ));
         
         return response()->json([
             'message' => 'Role idle monitoring settings updated successfully',

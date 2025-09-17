@@ -12,7 +12,7 @@ use Illuminate\Queue\SerializesModels;
 use App\Models\User;
 use App\Models\IdleSession;
 
-class IdleWarningEvent
+class IdleWarningEvent implements ShouldBroadcast
 {
     use Dispatchable, InteractsWithSockets, SerializesModels;
 

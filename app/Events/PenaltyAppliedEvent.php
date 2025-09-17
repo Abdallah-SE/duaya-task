@@ -12,7 +12,7 @@ use Illuminate\Queue\SerializesModels;
 use App\Models\User;
 use App\Models\Penalty;
 
-class PenaltyAppliedEvent
+class PenaltyAppliedEvent implements ShouldBroadcast
 {
     use Dispatchable, InteractsWithSockets, SerializesModels;
 

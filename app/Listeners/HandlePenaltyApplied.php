@@ -4,15 +4,12 @@ namespace App\Listeners;
 
 use App\Events\PenaltyAppliedEvent;
 use App\Models\ActivityLog;
-use Illuminate\Contracts\Queue\ShouldQueue;
-use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Events\Attributes\AsEventListener;
+use Illuminate\Support\Facades\Log;
 
 #[AsEventListener]
-class HandlePenaltyApplied implements ShouldQueue
+class HandlePenaltyApplied
 {
-    use InteractsWithQueue;
-
     /**
      * Create the event listener.
      */
@@ -26,51 +23,29 @@ class HandlePenaltyApplied implements ShouldQueue
      */
     public function handle(PenaltyAppliedEvent $event): void
     {
-        // Log the penalty application
-        ActivityLog::logActivity(
-            userId: $event->user->id,
-            action: 'penalty_applied',
-            subjectType: 'App\Models\Penalty',
-            subjectId: $event->penalty->id,
-            ipAddress: request()->ip(),
-            device: $this->getDeviceInfo(),
-            browser: $this->getBrowserInfo()
-        );
-    }
+        try {
+            // Log the penalty applied activity
+            ActivityLog::logActivity(
+                userId: $event->user->id,
+                action: 'penalty_applied',
+                subjectType: 'App\Models\Penalty',
+                subjectId: $event->penalty->id
+            );
 
-    /**
-     * Get device information from request.
-     */
-    private function getDeviceInfo(): string
-    {
-        $userAgent = request()->userAgent();
-        
-        if (str_contains($userAgent, 'Mobile')) {
-            return 'Mobile';
-        } elseif (str_contains($userAgent, 'Tablet')) {
-            return 'Tablet';
-        } else {
-            return 'Desktop';
+            Log::info('Penalty applied event processed', [
+                'user_id' => $event->user->id,
+                'penalty_id' => $event->penalty->id,
+                'reason' => $event->reason
+            ]);
+
+        } catch (\Exception $e) {
+            Log::error('Failed to process penalty applied event', [
+                'user_id' => $event->user->id,
+                'penalty_id' => $event->penalty->id,
+                'reason' => $event->reason,
+                'error' => $e->getMessage()
+            ]);
         }
     }
 
-    /**
-     * Get browser information from request.
-     */
-    private function getBrowserInfo(): string
-    {
-        $userAgent = request()->userAgent();
-        
-        if (str_contains($userAgent, 'Chrome')) {
-            return 'Chrome';
-        } elseif (str_contains($userAgent, 'Firefox')) {
-            return 'Firefox';
-        } elseif (str_contains($userAgent, 'Safari')) {
-            return 'Safari';
-        } elseif (str_contains($userAgent, 'Edge')) {
-            return 'Edge';
-        } else {
-            return 'Unknown';
-        }
-    }
 }

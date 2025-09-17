@@ -4,14 +4,12 @@ namespace App\Listeners;
 
 use App\Events\IdleWarningEvent;
 use App\Models\ActivityLog;
-use Illuminate\Contracts\Queue\ShouldQueue;
-use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Events\Attributes\AsEventListener;
+use Illuminate\Support\Facades\Log;
 
 #[AsEventListener]
-class HandleIdleWarning implements ShouldQueue
+class HandleIdleWarning
 {
-    use InteractsWithQueue;
 
     /**
      * Create the event listener.
@@ -26,58 +24,43 @@ class HandleIdleWarning implements ShouldQueue
      */
     public function handle(IdleWarningEvent $event): void
     {
-        // Log the idle warning with descriptive action name
-        $actionName = match($event->warningCount) {
-            1 => 'create_idle_alert',
-            2 => 'create_idle_warning', 
-            3 => 'create_idle_logout',
-            default => 'create_idle_warning_' . $event->warningCount
+        try {
+            // Log the idle warning activity
+            ActivityLog::logActivity(
+                userId: $event->user->id,
+                action: 'idle_warning',
+                subjectType: 'App\Models\IdleSession',
+                subjectId: $event->sessionId
+            );
+
+            Log::info('Idle warning event processed', [
+                'user_id' => $event->user->id,
+                'warning_count' => $event->warningCount,
+                'session_id' => $event->sessionId,
+                'max_warnings' => $event->maxWarnings
+            ]);
+
+        } catch (\Exception $e) {
+            Log::error('Failed to process idle warning event', [
+                'user_id' => $event->user->id,
+                'warning_count' => $event->warningCount,
+                'session_id' => $event->sessionId,
+                'error' => $e->getMessage()
+            ]);
+        }
+    }
+
+    /**
+     * Get warning type based on warning count.
+     */
+    private function getWarningType(int $warningCount): string
+    {
+        return match ($warningCount) {
+            1 => 'alert',
+            2 => 'warning',
+            3 => 'final_warning',
+            default => 'unknown'
         };
-        
-        ActivityLog::logActivity(
-            userId: $event->user->id,
-            action: $actionName,
-            subjectType: 'App\Models\IdleSession',
-            subjectId: $event->sessionId,
-            ipAddress: request()->ip(),
-            device: $this->getDeviceInfo(),
-            browser: $this->getBrowserInfo()
-        );
     }
 
-    /**
-     * Get device information from request.
-     */
-    private function getDeviceInfo(): string
-    {
-        $userAgent = request()->userAgent();
-        
-        if (str_contains($userAgent, 'Mobile')) {
-            return 'Mobile';
-        } elseif (str_contains($userAgent, 'Tablet')) {
-            return 'Tablet';
-        } else {
-            return 'Desktop';
-        }
-    }
-
-    /**
-     * Get browser information from request.
-     */
-    private function getBrowserInfo(): string
-    {
-        $userAgent = request()->userAgent();
-        
-        if (str_contains($userAgent, 'Chrome')) {
-            return 'Chrome';
-        } elseif (str_contains($userAgent, 'Firefox')) {
-            return 'Firefox';
-        } elseif (str_contains($userAgent, 'Safari')) {
-            return 'Safari';
-        } elseif (str_contains($userAgent, 'Edge')) {
-            return 'Edge';
-        } else {
-            return 'Unknown';
-        }
-    }
 }
